@@ -1,0 +1,11 @@
+--- net/minecraft/src/EntityChicken.java
++++ net/minecraft/src/EntityChicken.java
+@@ -12,7 +12,7 @@
+ 	public EntityChicken(World var1) {
+ 		super(var1);
+ 		this.texture = "/mob/chicken.png";
+-		this.setSize(0.3F, 0.4F);
++		this.setSize(0.4F, 0.7F);
+ 		this.health = 4;
+ 		this.timeUntilNextEgg = this.rand.nextInt(6000) + 6000;
+ 	}

@@ -1,0 +1,138 @@
+--- net/minecraft/src/World.java
++++ net/minecraft/src/World.java
+@@ -1019,8 +1019,7 @@
+ 
+ 		int var5 = MathHelper.floor_double(var1.posX);
+ 		int var6 = MathHelper.floor_double(var1.posZ);
+-		float var7 = (float)this.getWorldChunkManager().getTemperature(var5, var6);
+-		int var8 = this.getWorldChunkManager().getBiomeGenAt(var5, var6).getSkyColorByTemp(var7);
++		int var8 = this.getWorldChunkManager().getBiomeGenAt(var5, var6).getSkyColorByTemp(0.0F);
+ 		float var9 = (float)(var8 >> 16 & 255) / 255.0F;
+ 		float var10 = (float)(var8 >> 8 & 255) / 255.0F;
+ 		float var11 = (float)(var8 & 255) / 255.0F;
+@@ -1924,7 +1923,26 @@
+ 			}
+ 
+ 			int var15;
+-			if(this.rand.nextInt(16) == 0) {
++			if(this.worldProvider.worldType == 0) {
++				if(this.rand.nextInt(4) == 0) {
++					this.field_9437_g = this.field_9437_g * 3 + this.field_9436_h;
++					var6 = this.field_9437_g >> 2;
++					var7 = var6 & 0xF;
++					var8 = var6 >> 8 & 0xF;
++					var9 = this.findTopSolidBlock(var7 + var3, var8 + var4);
++					if(var9 >= 0 && var9 < 128 && var14.getSavedLightValue(EnumSkyBlock.Block, var7, var9, var8) < 10) {
++						var10 = var14.getBlockID(var7, var9 - 1, var8);
++						var15 = var14.getBlockID(var7, var9, var8);
++						if(var15 == 0 && Block.snow.canPlaceBlockAt(this, var7 + var3, var9, var8 + var4) && var10 != 0 && var10 != Block.ice.blockID && Block.blocksList[var10].blockMaterial.getIsSolid()) {
++							this.setBlockWithNotify(var7 + var3, var9, var8 + var4, Block.snow.blockID);
++						}
++
++						if(var10 == Block.waterStill.blockID && var14.getBlockMetadata(var7, var9 - 1, var8) == 0) {
++							this.setBlockWithNotify(var7 + var3, var9 - 1, var8 + var4, Block.ice.blockID);
++						}
++					}
++				}
++			} else if(this.rand.nextInt(16) == 0) {
+ 				this.field_9437_g = this.field_9437_g * 3 + 1013904223;
+ 				var6 = this.field_9437_g >> 2;
+ 				var7 = var6 & 15;
+@@ -2396,10 +2414,18 @@
+ 	}
+ 
+ 	public float func_27166_f(float var1) {
++		if(this.worldProvider.worldType != 0) {
++			return 0.0F;
++		}
++
+ 		return (this.prevThunderingStrength + (this.thunderingStrength - this.prevThunderingStrength) * var1) * this.func_27162_g(var1);
+ 	}
+ 
+ 	public float func_27162_g(float var1) {
++		if(this.worldProvider.worldType != 0) {
++			return 0.0F;
++		}
++
+ 		return this.prevRainingStrength + (this.rainingStrength - this.prevRainingStrength) * var1;
+ 	}
+ 
+--- net/minecraft/src/EntityRenderer.java
++++ net/minecraft/src/EntityRenderer.java
+@@ -634,6 +634,76 @@
+ 	}
+ 
+ 	protected void renderRainSnow(float var1) {
++		if(this.mc.theWorld.worldProvider.worldType == 0) {
++			EntityLiving var2 = this.mc.renderViewEntity;
++			World var3 = this.mc.theWorld;
++			int var4 = MathHelper.floor_double(var2.posX);
++			int var5 = MathHelper.floor_double(var2.posY);
++			int var6 = MathHelper.floor_double(var2.posZ);
++			Tessellator var7 = Tessellator.instance;
++			GL11.glDisable(GL11.GL_CULL_FACE);
++			GL11.glNormal3f(0.0F, 1.0F, 0.0F);
++			GL11.glEnable(GL11.GL_BLEND);
++			GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
++			GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.renderEngine.getTexture("/environment/snow.png"));
++			double var8 = var2.lastTickPosX + (var2.posX - var2.lastTickPosX) * (double)var1;
++			double var10 = var2.lastTickPosY + (var2.posY - var2.lastTickPosY) * (double)var1;
++			double var12 = var2.lastTickPosZ + (var2.posZ - var2.lastTickPosZ) * (double)var1;
++			byte var14 = 5;
++			if(this.mc.gameSettings.fancyGraphics) {
++				var14 = 10;
++			}
++
++			for(int var15 = var4 - var14; var15 <= var4 + var14; ++var15) {
++				for(int var16 = var6 - var14; var16 <= var6 + var14; ++var16) {
++					int var17 = var3.findTopSolidBlock(var15, var16);
++					if(var17 < 0) {
++						var17 = 0;
++					}
++
++					int var18 = var5 - var14;
++					int var19 = var5 + var14;
++					if(var18 < var17) {
++						var18 = var17;
++					}
++
++					if(var19 < var17) {
++						var19 = var17;
++					}
++
++					float var20 = 2.0F;
++					if(var18 != var19) {
++						this.random.setSeed((long)(var15 * var15 * 3121 + var15 * 45238971 + var16 * var16 * 418711 + var16 * 13761));
++						float var21 = (float)this.rendererUpdateCount + var1;
++						float var22 = ((float)(this.rendererUpdateCount & 511) + var1) / 512.0F;
++						float var23 = this.random.nextFloat() + var21 * 0.01F * (float)this.random.nextGaussian();
++						float var24 = this.random.nextFloat() + var21 * (float)this.random.nextGaussian() * 0.001F;
++						double var25 = (double)((float)var15 + 0.5F) - var2.posX;
++						double var27 = (double)((float)var16 + 0.5F) - var2.posZ;
++						float var29 = MathHelper.sqrt_double(var25 * var25 + var27 * var27) / (float)var14;
++						var7.startDrawingQuads();
++						float var30 = var3.getLightBrightness(var15, 128, var16);
++						GL11.glColor4f(var30, var30, var30, (1.0F - var29 * var29) * 0.7F);
++						var7.setTranslationD(-var8 * 1.0D, -var10 * 1.0D, -var12 * 1.0D);
++						var7.addVertexWithUV((double)(var15 + 0), (double)var18, (double)(var16 + 0), (double)(0.0F * var20 + var23), (double)((float)var18 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 1), (double)var18, (double)(var16 + 1), (double)(1.0F * var20 + var23), (double)((float)var18 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 1), (double)var19, (double)(var16 + 1), (double)(1.0F * var20 + var23), (double)((float)var19 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 0), (double)var19, (double)(var16 + 0), (double)(0.0F * var20 + var23), (double)((float)var19 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 0), (double)var18, (double)(var16 + 1), (double)(0.0F * var20 + var23), (double)((float)var18 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 1), (double)var18, (double)(var16 + 0), (double)(1.0F * var20 + var23), (double)((float)var18 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 1), (double)var19, (double)(var16 + 0), (double)(1.0F * var20 + var23), (double)((float)var19 * var20 / 8.0F + var22 * var20 + var24));
++						var7.addVertexWithUV((double)(var15 + 0), (double)var19, (double)(var16 + 1), (double)(0.0F * var20 + var23), (double)((float)var19 * var20 / 8.0F + var22 * var20 + var24));
++						var7.setTranslationD(0.0D, 0.0D, 0.0D);
++						var7.draw();
++					}
++				}
++			}
++
++			GL11.glEnable(GL11.GL_CULL_FACE);
++			GL11.glDisable(GL11.GL_BLEND);
++			return;
++		}
++
+ 		float var2 = this.mc.theWorld.func_27162_g(var1);
+ 		if(var2 > 0.0F) {
+ 			EntityLiving var3 = this.mc.renderViewEntity;

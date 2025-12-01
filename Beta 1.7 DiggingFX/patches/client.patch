@@ -1,0 +1,11 @@
+--- net/minecraft/src/EntityPlayer.java
++++ net/minecraft/src/EntityPlayer.java
+@@ -488,7 +488,7 @@
+ 	public void attackTargetEntityWithCurrentItem(Entity var1) {
+ 		int var2 = this.inventory.getDamageVsEntity(var1);
+ 		if(var2 > 0) {
+-			if(this.motionY < 0.0D) {
++			if(this.motionY < 0.0F && !this.onGround && !this.isOnLadder() && !this.isInWater() && this.ridingEntity == null && var1 instanceof EntityLiving) {
+ 				++var2;
+ 			}
+ 

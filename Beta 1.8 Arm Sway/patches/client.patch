@@ -1,0 +1,44 @@
+--- net/minecraft/src/EntityPlayerSP.java
++++ net/minecraft/src/EntityPlayerSP.java
+@@ -5,6 +5,10 @@
+ public class EntityPlayerSP extends EntityPlayer {
+ 	public MovementInput movementInput;
+ 	protected Minecraft mc;
++	public float flRenderArmYaw;
++	public float flRenderArmPitch;
++	public float flPreviousRenderArmYaw;
++	public float flPreviousRenderArmPitch;
+ 	private MouseFilter field_21903_bJ = new MouseFilter();
+ 	private MouseFilter field_21904_bK = new MouseFilter();
+ 	private MouseFilter field_21902_bL = new MouseFilter();
+@@ -29,6 +33,10 @@
+ 		this.moveStrafing = this.movementInput.moveStrafe;
+ 		this.moveForward = this.movementInput.moveForward;
+ 		this.isJumping = this.movementInput.jump;
++		this.flPreviousRenderArmYaw = this.flRenderArmYaw;
++		this.flPreviousRenderArmPitch = this.flRenderArmPitch;
++		this.flRenderArmPitch = (float)((double)this.flRenderArmPitch + (double)(this.rotationPitch - this.flRenderArmPitch) * 0.5D);
++		this.flRenderArmYaw = (float)((double)this.flRenderArmYaw + (double)(this.rotationYaw - this.flRenderArmYaw) * 0.5D);
+ 	}
+ 
+ 	public void onLivingUpdate() {
+--- net/minecraft/src/ItemRenderer.java
++++ net/minecraft/src/ItemRenderer.java
+@@ -136,6 +136,17 @@
+ 		GL11.glRotatef(var3.prevRotationYaw + (var3.rotationYaw - var3.prevRotationYaw) * var1, 0.0F, 1.0F, 0.0F);
+ 		RenderHelper.enableStandardItemLighting();
+ 		GL11.glPopMatrix();
++		if(var3 instanceof EntityPlayerSP) {
++			float flSwayPitch;
++			float flSwayYaw;
++
++			EntityPlayerSP var5 = (EntityPlayerSP)var3;
++			flSwayPitch = var5.flPreviousRenderArmPitch + (var5.flRenderArmPitch - var5.flPreviousRenderArmPitch) * var1;
++			flSwayYaw = var5.flPreviousRenderArmYaw + (var5.flRenderArmYaw - var5.flPreviousRenderArmYaw) * var1;
++			GL11.glRotatef((var3.rotationPitch - flSwayPitch) * 0.1F, 1.0F, 0.0F, 0.0F);
++			GL11.glRotatef((var3.rotationYaw - flSwayYaw) * 0.1F, 0.0F, 1.0F, 0.0F);
++		}
++
+ 		ItemStack var5 = this.itemToRender;
+ 		float var6 = this.mc.theWorld.getLightBrightness(MathHelper.floor_double(var3.posX), MathHelper.floor_double(var3.posY), MathHelper.floor_double(var3.posZ));
+ 		float var8;

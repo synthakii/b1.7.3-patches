@@ -1,10 +1,7 @@
 Create a mod which backports sheep having all parts of their model colored
 Add sounds for shearing, tools breaking, chests opening, and minecarts rolling
-Fix large items with some types of blocks
 Fix weird z-issue with the containers text and items
-Fix leggings not being properly rendered when riding something
 Fix torches missing the bottom part of the model
-Fix block breaking animation disappearing at upward angles
 Fix boat dismounting
 Fix fence lighting
 Fix saddled pigs and furnaces with buckets eating the item

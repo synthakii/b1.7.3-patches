@@ -1,0 +1,12 @@
+--- net/minecraft/src/RenderItem.java
++++ net/minecraft/src/RenderItem.java
+@@ -42,7 +42,8 @@
+ 			GL11.glRotatef(var12, 0.0F, 1.0F, 0.0F);
+ 			this.loadTexture("/terrain.png");
+ 			float var28 = 0.25F;
+-			if(!Block.blocksList[var10.itemID].renderAsNormalBlock() && var10.itemID != Block.stairSingle.blockID && Block.blocksList[var10.itemID].getRenderType() != 16) {
++			int var31 = Block.blocksList[var10.itemID].getRenderType();
++			if(var31 == 1 || var31 == 19 || var31 == 12 || var31 == 2) {
+ 				var28 = 0.5F;
+ 			}
+ 

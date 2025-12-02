@@ -1,0 +1,10 @@
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1072,6 +1072,7 @@
+ 		GL11.glEnable(GL11.GL_ALPHA_TEST);
+ 		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+ 		GL11.glColor4f(1.0F, 1.0F, 1.0F, (MathHelper.sin((float)System.currentTimeMillis() / 100.0F) * 0.2F + 0.4F) * 0.5F);
++		GL11.glScalef(0.999F, 0.999F, 0.999F);
+ 		int var8;
+ 		if(var3 == 0) {
+ 			if(this.damagePartialTime > 0.0F) {

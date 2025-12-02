@@ -1,0 +1,28 @@
+--- net/minecraft/client/Minecraft.java
++++ net/minecraft/client/Minecraft.java
+@@ -98,6 +98,7 @@
+ import org.lwjgl.input.Keyboard;
+ import org.lwjgl.input.Mouse;
+ import org.lwjgl.opengl.Display;
++import org.lwjgl.opengl.PixelFormat;
+ import org.lwjgl.opengl.DisplayMode;
+ import org.lwjgl.opengl.GL11;
+ import org.lwjgl.util.glu.GLU;
+@@ -221,7 +222,7 @@
+ 		Display.setTitle("Minecraft Minecraft Beta 1.7.3");
+ 
+ 		try {
+-			Display.create();
++			Display.create(new PixelFormat().withDepthBits(24));
+ 		} catch (LWJGLException var6) {
+ 			var6.printStackTrace();
+ 
+@@ -230,7 +231,7 @@
+ 			} catch (InterruptedException var5) {
+ 			}
+ 
+-			Display.create();
++			Display.create(new PixelFormat().withDepthBits(24));
+ 		}
+ 
+ 		this.mcDataDir = getMinecraftDir();

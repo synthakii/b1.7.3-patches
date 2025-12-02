@@ -1,0 +1,39 @@
+--- net/minecraft/src/RenderPlayer.java
++++ net/minecraft/src/RenderPlayer.java
+@@ -200,6 +200,11 @@
+ 				GL11.glScalef(var5, -var5, var5);
+ 				GL11.glRotatef(-100.0F, 1.0F, 0.0F, 0.0F);
+ 				GL11.glRotatef(45.0F, 0.0F, 1.0F, 0.0F);
++
++				if(var21.getItem() instanceof ItemBow) {
++					  GL11.glTranslatef(0.0F, -0.5F, 0.0F);
++				}
++
+ 			} else {
+ 				var5 = 6.0F / 16.0F;
+ 				GL11.glTranslatef(0.25F, 3.0F / 16.0F, -(3.0F / 16.0F));
+--- net/minecraft/src/ItemBow.java
++++ net/minecraft/src/ItemBow.java
+@@ -16,4 +16,8 @@
+ 
+ 		return var1;
+ 	}
++
++	public boolean isFull3D() {
++		return true;
++	}
+ }
+--- net/minecraft/src/RenderBiped.java
++++ net/minecraft/src/RenderBiped.java
+@@ -30,6 +30,11 @@
+ 				GL11.glScalef(var4, -var4, var4);
+ 				GL11.glRotatef(-100.0F, 1.0F, 0.0F, 0.0F);
+ 				GL11.glRotatef(45.0F, 0.0F, 1.0F, 0.0F);
++
++				if(var3.getItem() instanceof ItemBow) {
++					GL11.glRotatef(-5, 1, 0, 0);
++					GL11.glTranslatef(0.2F, -0.5F, 0.2F);
++				}
+ 			} else {
+ 				var4 = 6.0F / 16.0F;
+ 				GL11.glTranslatef(0.25F, 3.0F / 16.0F, -(3.0F / 16.0F));

@@ -1,0 +1,19 @@
+--- net/minecraft/src/BlockGrass.java
++++ net/minecraft/src/BlockGrass.java
+@@ -9,6 +9,16 @@
+ 		this.setTickOnLoad(true);
+ 	}
+ 
++	public int getBlockTextureFromSideAndMetadata(int var1, int var2) {
++		return var1 == 1 ? 0 : (var1 == 0 ? 2 : 3);
++	}
++
++	public int getRenderColor(int var1) {
++		double var2 = 0.5D;
++		double var4 = 1.0D;
++		return ColorizerGrass.getGrassColor(var2, var4);
++	}
++
+ 	public int getBlockTexture(IBlockAccess var1, int var2, int var3, int var4, int var5) {
+ 		if(var5 == 1) {
+ 			return 0;

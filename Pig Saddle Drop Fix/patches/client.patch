@@ -1,0 +1,13 @@
+--- net/minecraft/src/EntityPig.java
++++ net/minecraft/src/EntityPig.java
+@@ -43,6 +43,10 @@
+ 	}
+ 
+ 	protected int getDropItemId() {
++		if(this.getSaddled()) {
++			this.dropItem(Item.saddle.shiftedIndex, 1);
++		}
++
+ 		return this.fire > 0 ? Item.porkCooked.shiftedIndex : Item.porkRaw.shiftedIndex;
+ 	}
+ 

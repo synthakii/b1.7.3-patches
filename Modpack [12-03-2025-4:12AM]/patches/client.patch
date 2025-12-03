@@ -1,0 +1,470 @@
+--- net/minecraft/src/ItemSpade.java
++++ net/minecraft/src/ItemSpade.java
+@@ -1,7 +1,7 @@
+ package net.minecraft.src;
+ 
+ public class ItemSpade extends ItemTool {
+-	private static Block[] blocksEffectiveAgainst = new Block[]{Block.grass, Block.dirt, Block.sand, Block.gravel, Block.snow, Block.blockSnow, Block.blockClay, Block.tilledField};
++	private static Block[] blocksEffectiveAgainst = new Block[]{Block.grass, Block.dirt, Block.sand, Block.gravel, Block.snow, Block.blockSnow, Block.blockClay, Block.tilledField, Block.slowSand};
+ 
+ 	public ItemSpade(int var1, EnumToolMaterial var2) {
+ 		super(var1, 1, var2, blocksEffectiveAgainst);
+--- net/minecraft/src/ItemFood.java
++++ net/minecraft/src/ItemFood.java
+@@ -1,8 +1,11 @@
+ package net.minecraft.src;
+ 
++import java.util.Random;
++
+ public class ItemFood extends Item {
+ 	private int healAmount;
+ 	private boolean isWolfsFavoriteMeat;
++	private static final Random random = new Random();
+ 
+ 	public ItemFood(int var1, int var2, boolean var3) {
+ 		super(var1);
+@@ -12,8 +15,19 @@
+ 	}
+ 
+ 	public ItemStack onItemRightClick(ItemStack var1, World var2, EntityPlayer var3) {
++		if(var3.health >= 20) {
++			return var1;
++		}
++
+ 		--var1.stackSize;
+-		var3.heal(this.healAmount);
++		var3.healAmount += this.healAmount;
++
++		var2.playSoundAtEntity(var3, "random.eat", 1.0F, (random.nextFloat() - random.nextFloat()) * 0.2F + 1.0F);
++
++		if(this.healAmount + var3.health >= 20) {
++			var2.playSoundAtEntity(var3, "random.burp", 0.5F, (random.nextFloat() - random.nextFloat()) * 0.2F + 1.0F);
++		}
++
+ 		return var1;
+ 	}
+ 
+--- net/minecraft/src/EntityPig.java
++++ net/minecraft/src/EntityPig.java
+@@ -43,6 +43,10 @@
+ 	}
+ 
+ 	protected int getDropItemId() {
++		if(this.getSaddled()) {
++			this.dropItem(Item.saddle.shiftedIndex, 1);
++		}
++
+ 		return this.fire > 0 ? Item.porkCooked.shiftedIndex : Item.porkRaw.shiftedIndex;
+ 	}
+ 
+--- net/minecraft/src/MouseHelper.java
++++ net/minecraft/src/MouseHelper.java
+@@ -5,6 +5,7 @@
+ import org.lwjgl.LWJGLException;
+ import org.lwjgl.input.Cursor;
+ import org.lwjgl.input.Mouse;
++import org.lwjgl.opengl.Display;
+ 
+ public class MouseHelper {
+ 	private Component field_1117_c;
+@@ -35,7 +36,12 @@
+ 	}
+ 
+ 	public void ungrabMouseCursor() {
+-		Mouse.setCursorPosition(this.field_1117_c.getWidth() / 2, this.field_1117_c.getHeight() / 2);
++		if(Display.isFullscreen()) {
++			Mouse.setCursorPosition(Display.getDisplayMode().getWidth() / 2, Display.getDisplayMode().getHeight() / 2);
++		} else {
++			Mouse.setCursorPosition(this.field_1117_c.getWidth() / 2, this.field_1117_c.getHeight() / 2);
++		}
++		
+ 		Mouse.setGrabbed(false);
+ 	}
+ 
+--- net/minecraft/src/RenderPlayer.java
++++ net/minecraft/src/RenderPlayer.java
+@@ -200,6 +200,11 @@
+ 				GL11.glScalef(var5, -var5, var5);
+ 				GL11.glRotatef(-100.0F, 1.0F, 0.0F, 0.0F);
+ 				GL11.glRotatef(45.0F, 0.0F, 1.0F, 0.0F);
++
++				if(var21.getItem() instanceof ItemBow) {
++					  GL11.glTranslatef(0.0F, -0.5F, 0.0F);
++				}
++
+ 			} else {
+ 				var5 = 6.0F / 16.0F;
+ 				GL11.glTranslatef(0.25F, 3.0F / 16.0F, -(3.0F / 16.0F));
+--- net/minecraft/src/TileEntityFurnace.java
++++ net/minecraft/src/TileEntityFurnace.java
+@@ -116,6 +116,12 @@
+ 					var2 = true;
+ 					if(this.furnaceItemStacks[1] != null) {
+ 						--this.furnaceItemStacks[1].stackSize;
++
++						if(this.furnaceItemStacks[1].itemID == Item.bucketLava.shiftedIndex) {
++							this.furnaceItemStacks[1].itemID = Item.bucketEmpty.shiftedIndex;
++							this.furnaceItemStacks[1].stackSize = 1;
++						}
++
+ 						if(this.furnaceItemStacks[1].stackSize == 0) {
+ 							this.furnaceItemStacks[1] = null;
+ 						}
+--- net/minecraft/src/EntityBoat.java
++++ net/minecraft/src/EntityBoat.java
+@@ -71,15 +71,7 @@
+ 					this.riddenByEntity.mountEntity(this);
+ 				}
+ 
+-				int var3;
+-				for(var3 = 0; var3 < 3; ++var3) {
+-					this.dropItemWithOffset(Block.planks.blockID, 1, 0.0F);
+-				}
+-
+-				for(var3 = 0; var3 < 2; ++var3) {
+-					this.dropItemWithOffset(Item.stick.shiftedIndex, 1, 0.0F);
+-				}
+-
++				this.dropItem(Item.boat.shiftedIndex, 1);
+ 				this.setEntityDead();
+ 			}
+ 
+--- net/minecraft/src/GuiContainer.java
++++ net/minecraft/src/GuiContainer.java
+@@ -78,6 +78,8 @@
+ 		super.drawScreen(var1, var2, var3);
+ 		GL11.glEnable(GL11.GL_LIGHTING);
+ 		GL11.glEnable(GL11.GL_DEPTH_TEST);
++		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
++		GL11.glDisable(GL11.GL_LIGHTING);
+ 	}
+ 
+ 	protected void drawGuiContainerForegroundLayer() {
+--- net/minecraft/src/BlockFence.java
++++ net/minecraft/src/BlockFence.java
+@@ -5,10 +5,6 @@
+ 		super(var1, var2, Material.wood);
+ 	}
+ 
+-	public boolean canPlaceBlockAt(World var1, int var2, int var3, int var4) {
+-		return var1.getBlockId(var2, var3 - 1, var4) == this.blockID ? true : (!var1.getBlockMaterial(var2, var3 - 1, var4).isSolid() ? false : super.canPlaceBlockAt(var1, var2, var3, var4));
+-	}
+-
+ 	public AxisAlignedBB getCollisionBoundingBoxFromPool(World var1, int var2, int var3, int var4) {
+ 		return AxisAlignedBB.getBoundingBoxFromPool((double)var2, (double)var3, (double)var4, (double)(var2 + 1), (double)((float)var3 + 1.5F), (double)(var4 + 1));
+ 	}
+--- net/minecraft/src/EntityDiggingFX.java
++++ net/minecraft/src/EntityDiggingFX.java
+@@ -7,7 +7,7 @@
+ 	public EntityDiggingFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12, Block var14, int var15, int var16) {
+ 		super(var1, var2, var4, var6, var8, var10, var12);
+ 		this.field_4082_a = var14;
+-		this.particleTextureIndex = var14.getBlockTextureFromSideAndMetadata(0, var16);
++		this.particleTextureIndex = var14.getBlockTextureFromSideAndMetadata(var15, var16);
+ 		this.particleGravity = var14.blockParticleGravity;
+ 		this.particleRed = this.particleGreen = this.particleBlue = 0.6F;
+ 		this.particleScale /= 2.0F;
+--- net/minecraft/src/BlockStairs.java
++++ net/minecraft/src/BlockStairs.java
+@@ -90,14 +90,6 @@
+ 		return this.modelBlock.getRenderBlockPass();
+ 	}
+ 
+-	public int idDropped(int var1, Random var2) {
+-		return this.modelBlock.idDropped(var1, var2);
+-	}
+-
+-	public int quantityDropped(Random var1) {
+-		return this.modelBlock.quantityDropped(var1);
+-	}
+-
+ 	public int getBlockTextureFromSideAndMetadata(int var1, int var2) {
+ 		return this.modelBlock.getBlockTextureFromSideAndMetadata(var1, var2);
+ 	}
+@@ -141,10 +133,6 @@
+ 
+ 	public void onBlockRemoval(World var1, int var2, int var3, int var4) {
+ 		this.modelBlock.onBlockRemoval(var1, var2, var3, var4);
+-	}
+-
+-	public void dropBlockAsItemWithChance(World var1, int var2, int var3, int var4, int var5, float var6) {
+-		this.modelBlock.dropBlockAsItemWithChance(var1, var2, var3, var4, var5, var6);
+ 	}
+ 
+ 	public void onEntityWalking(World var1, int var2, int var3, int var4, Entity var5) {
+--- net/minecraft/client/Minecraft.java
++++ net/minecraft/client/Minecraft.java
+@@ -98,6 +98,7 @@
+ import org.lwjgl.input.Keyboard;
+ import org.lwjgl.input.Mouse;
+ import org.lwjgl.opengl.Display;
++import org.lwjgl.opengl.PixelFormat;
+ import org.lwjgl.opengl.DisplayMode;
+ import org.lwjgl.opengl.GL11;
+ import org.lwjgl.util.glu.GLU;
+@@ -221,7 +222,7 @@
+ 		Display.setTitle("Minecraft Minecraft Beta 1.7.3");
+ 
+ 		try {
+-			Display.create();
++			Display.create(new PixelFormat().withDepthBits(24));
+ 		} catch (LWJGLException var6) {
+ 			var6.printStackTrace();
+ 
+@@ -230,7 +231,7 @@
+ 			} catch (InterruptedException var5) {
+ 			}
+ 
+-			Display.create();
++			Display.create(new PixelFormat().withDepthBits(24));
+ 		}
+ 
+ 		this.mcDataDir = getMinecraftDir();
+--- net/minecraft/src/EntityPlayerSP.java
++++ net/minecraft/src/EntityPlayerSP.java
+@@ -5,6 +5,10 @@
+ public class EntityPlayerSP extends EntityPlayer {
+ 	public MovementInput movementInput;
+ 	protected Minecraft mc;
++	public float flRenderArmYaw;
++	public float flRenderArmPitch;
++	public float flPreviousRenderArmYaw;
++	public float flPreviousRenderArmPitch;
+ 	private MouseFilter field_21903_bJ = new MouseFilter();
+ 	private MouseFilter field_21904_bK = new MouseFilter();
+ 	private MouseFilter field_21902_bL = new MouseFilter();
+@@ -29,6 +33,10 @@
+ 		this.moveStrafing = this.movementInput.moveStrafe;
+ 		this.moveForward = this.movementInput.moveForward;
+ 		this.isJumping = this.movementInput.jump;
++		this.flPreviousRenderArmYaw = this.flRenderArmYaw;
++		this.flPreviousRenderArmPitch = this.flRenderArmPitch;
++		this.flRenderArmPitch = (float)((double)this.flRenderArmPitch + (double)(this.rotationPitch - this.flRenderArmPitch) * 0.5D);
++		this.flRenderArmYaw = (float)((double)this.flRenderArmYaw + (double)(this.rotationYaw - this.flRenderArmYaw) * 0.5D);
+ 	}
+ 
+ 	public void onLivingUpdate() {
+--- net/minecraft/src/GuiAchievement.java
++++ net/minecraft/src/GuiAchievement.java
+@@ -107,7 +107,7 @@
+ 				}
+ 
+ 				GL11.glPushMatrix();
+-				GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
++				GL11.glRotatef(120.0F, 1.0F, 0.0F, 0.0F);
+ 				RenderHelper.enableStandardItemLighting();
+ 				GL11.glPopMatrix();
+ 				GL11.glDisable(GL11.GL_LIGHTING);
+--- net/minecraft/src/EntityFish.java
++++ net/minecraft/src/EntityFish.java
+@@ -352,7 +352,7 @@
+ 			double var8 = (double)MathHelper.sqrt_double(var2 * var2 + var4 * var4 + var6 * var6);
+ 			double var10 = 0.1D;
+ 			this.bobber.motionX += var2 * var10;
+-			this.bobber.motionY += var4 * var10 + (double)MathHelper.sqrt_double(var8) * 0.08D;
++			this.bobber.motionY += var4 * var10 + (double)MathHelper.sqrt_double(var8) * 0.04D;
+ 			this.bobber.motionZ += var6 * var10;
+ 			var1 = 3;
+ 		} else if(this.ticksCatchable > 0) {
+@@ -363,7 +363,7 @@
+ 			double var9 = (double)MathHelper.sqrt_double(var3 * var3 + var5 * var5 + var7 * var7);
+ 			double var11 = 0.1D;
+ 			var13.motionX = var3 * var11;
+-			var13.motionY = var5 * var11 + (double)MathHelper.sqrt_double(var9) * 0.08D;
++			var13.motionY = var5 * var11 + (double)MathHelper.sqrt_double(var9) * 0.04D;
+ 			var13.motionZ = var7 * var11;
+ 			this.worldObj.entityJoinedWorld(var13);
+ 			this.angler.addStat(StatList.fishCaughtStat, 1);
+--- net/minecraft/src/EntityPlayer.java
++++ net/minecraft/src/EntityPlayer.java
+@@ -488,7 +488,7 @@
+ 	public void attackTargetEntityWithCurrentItem(Entity var1) {
+ 		int var2 = this.inventory.getDamageVsEntity(var1);
+ 		if(var2 > 0) {
+-			if(this.motionY < 0.0D) {
++			if(this.motionY < 0.0F && !this.onGround && !this.isOnLadder() && !this.isInWater() && this.ridingEntity == null && var1 instanceof EntityLiving) {
+ 				++var2;
+ 			}
+ 
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1072,6 +1072,7 @@
+ 		GL11.glEnable(GL11.GL_ALPHA_TEST);
+ 		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+ 		GL11.glColor4f(1.0F, 1.0F, 1.0F, (MathHelper.sin((float)System.currentTimeMillis() / 100.0F) * 0.2F + 0.4F) * 0.5F);
++		GL11.glScalef(0.998F, 0.998F, 0.998F);
+ 		int var8;
+ 		if(var3 == 0) {
+ 			if(this.damagePartialTime > 0.0F) {
+--- net/minecraft/src/GuiAchievements.java
++++ net/minecraft/src/GuiAchievements.java
+@@ -232,7 +232,7 @@
+ 		Achievement var27 = null;
+ 		RenderItem var29 = new RenderItem();
+ 		GL11.glPushMatrix();
+-		GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
++		GL11.glRotatef(120.0F, 1.0F, 0.0F, 0.0F);
+ 		RenderHelper.enableStandardItemLighting();
+ 		GL11.glPopMatrix();
+ 		GL11.glDisable(GL11.GL_LIGHTING);
+--- net/minecraft/src/EntityChicken.java
++++ net/minecraft/src/EntityChicken.java
+@@ -12,7 +12,7 @@
+ 	public EntityChicken(World var1) {
+ 		super(var1);
+ 		this.texture = "/mob/chicken.png";
+-		this.setSize(0.3F, 0.4F);
++		this.setSize(0.4F, 0.7F);
+ 		this.health = 4;
+ 		this.timeUntilNextEgg = this.rand.nextInt(6000) + 6000;
+ 	}
+--- net/minecraft/src/ItemBow.java
++++ net/minecraft/src/ItemBow.java
+@@ -16,4 +16,8 @@
+ 
+ 		return var1;
+ 	}
++
++	public boolean isFull3D() {
++		return true;
++	}
+ }
+--- net/minecraft/src/ItemAxe.java
++++ net/minecraft/src/ItemAxe.java
+@@ -1,7 +1,7 @@
+ package net.minecraft.src;
+ 
+ public class ItemAxe extends ItemTool {
+-	private static Block[] blocksEffectiveAgainst = new Block[]{Block.planks, Block.bookShelf, Block.wood, Block.chest};
++	private static Block[] blocksEffectiveAgainst = new Block[]{Block.planks, Block.bookShelf, Block.wood, Block.chest, Block.workbench, Block.stairCompactPlanks, Block.jukebox, Block.signPost, Block.signWall, Block.pressurePlatePlanks, Block.ladder, Block.doorWood, Block.trapdoor, Block.pumpkin, Block.pumpkinLantern, Block.fence, Block.musicBlock};
+ 
+ 	protected ItemAxe(int var1, EnumToolMaterial var2) {
+ 		super(var1, 3, var2, blocksEffectiveAgainst);
+--- net/minecraft/src/BlockBookshelf.java
++++ net/minecraft/src/BlockBookshelf.java
+@@ -12,6 +12,10 @@
+ 	}
+ 
+ 	public int quantityDropped(Random var1) {
+-		return 0;
++		return 3;
++	}
++
++	public int idDropped(int var1, Random var2) {
++		return Item.book.shiftedIndex;
+ 	}
+ }
+--- net/minecraft/src/ItemPickaxe.java
++++ net/minecraft/src/ItemPickaxe.java
+@@ -1,7 +1,7 @@
+ package net.minecraft.src;
+ 
+ public class ItemPickaxe extends ItemTool {
+-	private static Block[] blocksEffectiveAgainst = new Block[]{Block.cobblestone, Block.stairDouble, Block.stairSingle, Block.stone, Block.sandStone, Block.cobblestoneMossy, Block.oreIron, Block.blockSteel, Block.oreCoal, Block.blockGold, Block.oreGold, Block.oreDiamond, Block.blockDiamond, Block.ice, Block.netherrack, Block.oreLapis, Block.blockLapis};
++	private static Block[] blocksEffectiveAgainst = new Block[]{Block.cobblestone, Block.stairDouble, Block.stairSingle, Block.stone, Block.sandStone, Block.cobblestoneMossy, Block.oreIron, Block.blockSteel, Block.oreCoal, Block.blockGold, Block.oreGold, Block.oreDiamond, Block.blockDiamond, Block.ice, Block.netherrack, Block.oreLapis, Block.blockLapis, Block.dispenser, Block.brick, Block.railPowered, Block.railDetector, Block.rail, Block.stoneOvenIdle, Block.stoneOvenActive, Block.stairCompactCobblestone, Block.pressurePlateStone, Block.doorSteel, Block.oreRedstone, Block.oreRedstoneGlowing, Block.button, Block.mobSpawner};
+ 
+ 	protected ItemPickaxe(int var1, EnumToolMaterial var2) {
+ 		super(var1, 2, var2, blocksEffectiveAgainst);
+--- net/minecraft/src/EntitySlime.java
++++ net/minecraft/src/EntitySlime.java
+@@ -97,6 +97,11 @@
+ 
+ 	public void setEntityDead() {
+ 		int var1 = this.getSlimeSize();
++
++		if(this.health < 0) {
++			this.health = 0;
++		}
++
+ 		if(!this.worldObj.multiplayerWorld && var1 > 1 && this.health == 0) {
+ 			for(int var2 = 0; var2 < 4; ++var2) {
+ 				float var3 = ((float)(var2 % 2) - 0.5F) * (float)var1 / 4.0F;
+--- net/minecraft/src/ItemRenderer.java
++++ net/minecraft/src/ItemRenderer.java
+@@ -136,6 +136,17 @@
+ 		GL11.glRotatef(var3.prevRotationYaw + (var3.rotationYaw - var3.prevRotationYaw) * var1, 0.0F, 1.0F, 0.0F);
+ 		RenderHelper.enableStandardItemLighting();
+ 		GL11.glPopMatrix();
++		if(var3 instanceof EntityPlayerSP) {
++			float flSwayPitch;
++			float flSwayYaw;
++
++			EntityPlayerSP var5 = (EntityPlayerSP)var3;
++			flSwayPitch = var5.flPreviousRenderArmPitch + (var5.flRenderArmPitch - var5.flPreviousRenderArmPitch) * var1;
++			flSwayYaw = var5.flPreviousRenderArmYaw + (var5.flRenderArmYaw - var5.flPreviousRenderArmYaw) * var1;
++			GL11.glRotatef((var3.rotationPitch - flSwayPitch) * 0.1F, 1.0F, 0.0F, 0.0F);
++			GL11.glRotatef((var3.rotationYaw - flSwayYaw) * 0.1F, 0.0F, 1.0F, 0.0F);
++		}
++
+ 		ItemStack var5 = this.itemToRender;
+ 		float var6 = this.mc.theWorld.getLightBrightness(MathHelper.floor_double(var3.posX), MathHelper.floor_double(var3.posY), MathHelper.floor_double(var3.posZ));
+ 		float var8;
+--- net/minecraft/src/RenderBiped.java
++++ net/minecraft/src/RenderBiped.java
+@@ -30,6 +30,11 @@
+ 				GL11.glScalef(var4, -var4, var4);
+ 				GL11.glRotatef(-100.0F, 1.0F, 0.0F, 0.0F);
+ 				GL11.glRotatef(45.0F, 0.0F, 1.0F, 0.0F);
++
++				if(var3.getItem() instanceof ItemBow) {
++					GL11.glRotatef(-5, 1, 0, 0);
++					GL11.glTranslatef(0.2F, -0.5F, 0.2F);
++				}
+ 			} else {
+ 				var4 = 6.0F / 16.0F;
+ 				GL11.glTranslatef(0.25F, 3.0F / 16.0F, -(3.0F / 16.0F));
+--- net/minecraft/src/GuiGameOver.java
++++ net/minecraft/src/GuiGameOver.java
+@@ -38,7 +38,7 @@
+ 		GL11.glScalef(2.0F, 2.0F, 2.0F);
+ 		this.drawCenteredString(this.fontRenderer, "Game over!", this.width / 2 / 2, 30, 16777215);
+ 		GL11.glPopMatrix();
+-		this.drawCenteredString(this.fontRenderer, "Score: &e" + this.mc.thePlayer.getScore(), this.width / 2, 100, 16777215);
++		this.drawCenteredString(this.fontRenderer, "Score: §e" + this.mc.thePlayer.getScore(), this.width / 2, 100, 16777215);
+ 		super.drawScreen(var1, var2, var3);
+ 	}
+ 
+--- net/minecraft/src/EntityLiving.java
++++ net/minecraft/src/EntityLiving.java
+@@ -56,6 +56,7 @@
+ 	protected float moveSpeed = 0.7F;
+ 	private Entity currentTarget;
+ 	protected int numTicksToChaseTarget = 0;
++	public int healAmount = 0;
+ 
+ 	public EntityLiving(World var1) {
+ 		super(var1);
+@@ -581,6 +582,10 @@
+ 	}
+ 
+ 	public void onLivingUpdate() {
++		if(this.healAmount > 0) {
++			this.heal(this.healAmount);
++			this.healAmount = 0;
++		}
+ 		if(this.newPosRotationIncrements > 0) {
+ 			double var1 = this.posX + (this.newPosX - this.posX) / (double)this.newPosRotationIncrements;
+ 			double var3 = this.posY + (this.newPosY - this.posY) / (double)this.newPosRotationIncrements;
+--- net/minecraft/src/RenderItem.java
++++ net/minecraft/src/RenderItem.java
+@@ -42,7 +42,8 @@
+ 			GL11.glRotatef(var12, 0.0F, 1.0F, 0.0F);
+ 			this.loadTexture("/terrain.png");
+ 			float var28 = 0.25F;
+-			if(!Block.blocksList[var10.itemID].renderAsNormalBlock() && var10.itemID != Block.stairSingle.blockID && Block.blocksList[var10.itemID].getRenderType() != 16) {
++			int var31 = Block.blocksList[var10.itemID].getRenderType();
++			if(var31 == 1 || var31 == 19 || var31 == 12 || var31 == 2) {
+ 				var28 = 0.5F;
+ 			}
+ 
+--- net/minecraft/src/GuiStats.java
++++ net/minecraft/src/GuiStats.java
+@@ -79,7 +79,7 @@
+ 		this.func_27147_a(var1 + 1, var2 + 1);
+ 		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+ 		GL11.glPushMatrix();
+-		GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
++		GL11.glRotatef(120.0F, 1.0F, 0.0F, 0.0F);
+ 		RenderHelper.enableStandardItemLighting();
+ 		GL11.glPopMatrix();
+ 		field_27153_j.drawItemIntoGui(this.fontRenderer, this.mc.renderEngine, var3, 0, Item.itemsList[var3].getIconFromDamage(0), var1 + 2, var2 + 2);

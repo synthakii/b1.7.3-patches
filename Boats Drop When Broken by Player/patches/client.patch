@@ -1,0 +1,19 @@
+--- net/minecraft/src/EntityBoat.java
++++ net/minecraft/src/EntityBoat.java
+@@ -71,15 +71,7 @@
+ 					this.riddenByEntity.mountEntity(this);
+ 				}
+ 
+-				int var3;
+-				for(var3 = 0; var3 < 3; ++var3) {
+-					this.dropItemWithOffset(Block.planks.blockID, 1, 0.0F);
+-				}
+-
+-				for(var3 = 0; var3 < 2; ++var3) {
+-					this.dropItemWithOffset(Item.stick.shiftedIndex, 1, 0.0F);
+-				}
+-
++				this.dropItem(Item.boat.shiftedIndex, 1);
+ 				this.setEntityDead();
+ 			}
+ 

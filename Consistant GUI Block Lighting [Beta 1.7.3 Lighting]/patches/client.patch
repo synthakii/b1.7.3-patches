@@ -1,0 +1,33 @@
+--- net/minecraft/src/GuiAchievement.java
++++ net/minecraft/src/GuiAchievement.java
+@@ -107,7 +107,7 @@
+ 				}
+ 
+ 				GL11.glPushMatrix();
+-				GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
++				GL11.glRotatef(120.0F, 1.0F, 0.0F, 0.0F);
+ 				RenderHelper.enableStandardItemLighting();
+ 				GL11.glPopMatrix();
+ 				GL11.glDisable(GL11.GL_LIGHTING);
+--- net/minecraft/src/GuiAchievements.java
++++ net/minecraft/src/GuiAchievements.java
+@@ -232,7 +232,7 @@
+ 		Achievement var27 = null;
+ 		RenderItem var29 = new RenderItem();
+ 		GL11.glPushMatrix();
+-		GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
++		GL11.glRotatef(120.0F, 1.0F, 0.0F, 0.0F);
+ 		RenderHelper.enableStandardItemLighting();
+ 		GL11.glPopMatrix();
+ 		GL11.glDisable(GL11.GL_LIGHTING);
+--- net/minecraft/src/GuiStats.java
++++ net/minecraft/src/GuiStats.java
+@@ -79,7 +79,7 @@
+ 		this.func_27147_a(var1 + 1, var2 + 1);
+ 		GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+ 		GL11.glPushMatrix();
+-		GL11.glRotatef(180.0F, 1.0F, 0.0F, 0.0F);
++		GL11.glRotatef(120.0F, 1.0F, 0.0F, 0.0F);
+ 		RenderHelper.enableStandardItemLighting();
+ 		GL11.glPopMatrix();
+ 		field_27153_j.drawItemIntoGui(this.fontRenderer, this.mc.renderEngine, var3, 0, Item.itemsList[var3].getIconFromDamage(0), var1 + 2, var2 + 2);

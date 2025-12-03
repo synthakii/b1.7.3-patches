@@ -4,8 +4,6 @@ Fix weird z-issue with the containers text and items
 Fix torches missing the bottom part of the model
 Fix boat dismounting
 Fix fence lighting
-Fix saddled pigs and furnaces with buckets eating the item
-Fix last durability point going to 0
 Fix pick block?
 Fix rendering with sleeping
 Add front thirdperson?

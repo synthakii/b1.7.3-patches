@@ -1,0 +1,15 @@
+--- net/minecraft/src/TileEntityFurnace.java
++++ net/minecraft/src/TileEntityFurnace.java
+@@ -116,6 +116,12 @@
+ 					var2 = true;
+ 					if(this.furnaceItemStacks[1] != null) {
+ 						--this.furnaceItemStacks[1].stackSize;
++
++						if(this.furnaceItemStacks[1].itemID == Item.bucketLava.shiftedIndex) {
++							this.furnaceItemStacks[1].itemID = Item.bucketEmpty.shiftedIndex;
++							this.furnaceItemStacks[1].stackSize = 1;
++						}
++
+ 						if(this.furnaceItemStacks[1].stackSize == 0) {
+ 							this.furnaceItemStacks[1] = null;
+ 						}

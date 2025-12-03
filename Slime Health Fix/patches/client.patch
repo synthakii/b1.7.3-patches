@@ -5,7 +5,7 @@
  	public void setEntityDead() {
  		int var1 = this.getSlimeSize();
 +
-+		if(this.health > 0) {
++		if(this.health < 0) {
 +			this.health = 0;
 +		}
 +

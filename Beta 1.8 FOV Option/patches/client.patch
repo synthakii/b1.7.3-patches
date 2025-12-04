@@ -1,0 +1,192 @@
+--- net/minecraft/src/EntityRenderer.java
++++ net/minecraft/src/EntityRenderer.java
+@@ -35,6 +35,9 @@
+ 	private float field_22221_y = 0.0F;
+ 	private float field_22220_z = 0.0F;
+ 	private float field_22230_A = 0.0F;
++	private float fovModifierHand;
++	private float fovModifierHandPrev;
++	private float fovMultiplierTemp;
+ 	private boolean cloudFog = false;
+ 	private double cameraZoom = 1.0D;
+ 	private double cameraYaw = 0.0D;
+@@ -58,6 +61,7 @@
+ 	}
+ 
+ 	public void updateRenderer() {
++		this.updateFovModifierHand();
+ 		this.fogColor2 = this.fogColor1;
+ 		this.field_22227_s = this.field_22228_r;
+ 		this.field_22225_u = this.field_22226_t;
+@@ -134,19 +138,31 @@
+ 		}
+ 	}
+ 
+-	private float getFOVModifier(float var1) {
+-		EntityLiving var2 = this.mc.renderViewEntity;
+-		float var3 = 70.0F;
+-		if(var2.isInsideOfMaterial(Material.water)) {
+-			var3 = 60.0F;
+-		}
+-
+-		if(var2.health <= 0) {
+-			float var4 = (float)var2.deathTime + var1;
+-			var3 /= (1.0F - 500.0F / (var4 + 500.0F)) * 2.0F + 1.0F;
+-		}
+-
+-		return var3 + this.field_22221_y + (this.field_22222_x - this.field_22221_y) * var1;
++	private void updateFovModifierHand() {
++		EntityPlayerSP var1 = (EntityPlayerSP)this.mc.renderViewEntity;
++		this.fovMultiplierTemp = var1.getFOVMultiplier();
++		this.fovModifierHandPrev = this.fovModifierHand;
++		this.fovModifierHand += (this.fovMultiplierTemp - this.fovModifierHand) * 0.5F;
++	}
++
++	private float getFOVModifier(float var1, boolean var2) {
++		EntityPlayer var3 = (EntityPlayer)this.mc.renderViewEntity;
++		float var4 = 70.0F;
++		if(var2) {
++			var4 += this.mc.gameSettings.fovSetting * 40.0F;
++			var4 *= this.fovModifierHandPrev + (this.fovModifierHand - this.fovModifierHandPrev) * var1;
++		}
++
++		if(var3.health <= 0) {
++			float var5 = (float)var3.deathTime + var1;
++			var4 /= (1.0F - 500.0F / (var5 + 500.0F)) * 2.0F + 1.0F;
++		}
++
++		if(var3.isInsideOfMaterial(Material.water)) {
++			var4 = var4 * 60.0F / 70.0F;
++		}
++
++		return var4 + this.field_22221_y + (this.field_22222_x - this.field_22221_y) * var1;
+ 	}
+ 
+ 	private void hurtCameraEffect(float var1) {
+@@ -270,9 +286,9 @@
+ 		if(this.cameraZoom != 1.0D) {
+ 			GL11.glTranslatef((float)this.cameraYaw, (float)(-this.cameraPitch), 0.0F);
+ 			GL11.glScaled(this.cameraZoom, this.cameraZoom, 1.0D);
+-			GLU.gluPerspective(this.getFOVModifier(var1), (float)this.mc.displayWidth / (float)this.mc.displayHeight, 0.05F, this.farPlaneDistance * 2.0F);
++			GLU.gluPerspective(this.getFOVModifier(var1, true), (float)this.mc.displayWidth / (float)this.mc.displayHeight, 0.05F, this.farPlaneDistance * 2.0F);
+ 		} else {
+-			GLU.gluPerspective(this.getFOVModifier(var1), (float)this.mc.displayWidth / (float)this.mc.displayHeight, 0.05F, this.farPlaneDistance * 2.0F);
++			GLU.gluPerspective(this.getFOVModifier(var1, true), (float)this.mc.displayWidth / (float)this.mc.displayHeight, 0.05F, this.farPlaneDistance * 2.0F);
+ 		}
+ 
+ 		GL11.glMatrixMode(GL11.GL_MODELVIEW);
+@@ -299,6 +315,22 @@
+ 	}
+ 
+ 	private void func_4135_b(float var1, int var2) {
++		GL11.glMatrixMode(GL11.GL_PROJECTION);
++		GL11.glLoadIdentity();
++		float var3 = 0.07F;
++		if(this.mc.gameSettings.anaglyph) {
++			GL11.glTranslatef((float)(-(var2 * 2 - 1)) * var3, 0.0F, 0.0F);
++		}
++
++		if(this.cameraZoom != 1.0D) {
++			GL11.glTranslatef((float)this.cameraYaw, (float)(-this.cameraPitch), 0.0F);
++			GL11.glScaled(this.cameraZoom, this.cameraZoom, 1.0D);
++			GLU.gluPerspective(this.getFOVModifier(var1, false), (float)this.mc.displayWidth / (float)this.mc.displayHeight, 0.05F, this.farPlaneDistance * 2.0F);
++		} else {
++			GLU.gluPerspective(this.getFOVModifier(var1, false), (float)this.mc.displayWidth / (float)this.mc.displayHeight, 0.05F, this.farPlaneDistance * 2.0F);
++		}
++
++		GL11.glMatrixMode(GL11.GL_MODELVIEW);
+ 		GL11.glLoadIdentity();
+ 		if(this.mc.gameSettings.anaglyph) {
+ 			GL11.glTranslatef((float)(var2 * 2 - 1) * 0.1F, 0.0F, 0.0F);
+--- net/minecraft/src/GuiOptions.java
++++ net/minecraft/src/GuiOptions.java
+@@ -4,7 +4,7 @@
+ 	private GuiScreen parentScreen;
+ 	protected String screenTitle = "Options";
+ 	private GameSettings options;
+-	private static EnumOptions[] field_22135_k = new EnumOptions[]{EnumOptions.MUSIC, EnumOptions.SOUND, EnumOptions.INVERT_MOUSE, EnumOptions.SENSITIVITY, EnumOptions.DIFFICULTY};
++	private static EnumOptions[] field_22135_k = new EnumOptions[]{EnumOptions.MUSIC, EnumOptions.SOUND, EnumOptions.INVERT_MOUSE, EnumOptions.SENSITIVITY, EnumOptions.FOV, EnumOptions.DIFFICULTY};
+ 
+ 	public GuiOptions(GuiScreen var1, GameSettings var2) {
+ 		this.parentScreen = var1;
+--- net/minecraft/src/EntityPlayerSP.java
++++ net/minecraft/src/EntityPlayerSP.java
+@@ -95,6 +95,10 @@
+ 		this.movementInput.checkKeyForMovementInput(var1, var2);
+ 	}
+ 
++	public float getFOVMultiplier() {
++		return 1.0F;
++	}
++
+ 	public void writeEntityToNBT(NBTTagCompound var1) {
+ 		super.writeEntityToNBT(var1);
+ 		var1.setInteger("Score", this.score);
+--- net/minecraft/src/EnumOptions.java
++++ net/minecraft/src/EnumOptions.java
+@@ -5,6 +5,7 @@
+ 	SOUND("options.sound", true, false),
+ 	INVERT_MOUSE("options.invertMouse", false, true),
+ 	SENSITIVITY("options.sensitivity", true, false),
++	FOV("options.fov", true, false),
+ 	RENDER_DISTANCE("options.renderDistance", false, false),
+ 	VIEW_BOBBING("options.viewBobbing", false, true),
+ 	ANAGLYPH("options.anaglyph", false, true),
+--- net/minecraft/src/GameSettings.java
++++ net/minecraft/src/GameSettings.java
+@@ -48,6 +48,7 @@
+ 	public boolean field_22273_E = false;
+ 	public float field_22272_F = 1.0F;
+ 	public float field_22271_G = 1.0F;
++	public float fovSetting = 0.0F;
+ 	public int guiScale = 0;
+ 
+ 	public GameSettings(Minecraft var1, File var2) {
+@@ -84,6 +85,10 @@
+ 			this.mc.sndManager.onSoundOptionsChanged();
+ 		}
+ 
++		if(var1 == EnumOptions.FOV) {
++			this.fovSetting = var2;
++		}
++
+ 		if(var1 == EnumOptions.SENSITIVITY) {
+ 			this.mouseSensitivity = var2;
+ 		}
+@@ -139,7 +144,7 @@
+ 	}
+ 
+ 	public float getOptionFloatValue(EnumOptions var1) {
+-		return var1 == EnumOptions.MUSIC ? this.musicVolume : (var1 == EnumOptions.SOUND ? this.soundVolume : (var1 == EnumOptions.SENSITIVITY ? this.mouseSensitivity : 0.0F));
++		return var1 == EnumOptions.FOV ? this.fovSetting : (var1 == EnumOptions.MUSIC ? this.musicVolume : (var1 == EnumOptions.SOUND ? this.soundVolume : (var1 == EnumOptions.SENSITIVITY ? this.mouseSensitivity : 0.0F)));
+ 	}
+ 
+ 	public boolean getOptionOrdinalValue(EnumOptions var1) {
+@@ -164,7 +169,7 @@
+ 		String var3 = var2.translateKey(var1.getEnumString()) + ": ";
+ 		if(var1.getEnumFloat()) {
+ 			float var5 = this.getOptionFloatValue(var1);
+-			return var1 == EnumOptions.SENSITIVITY ? (var5 == 0.0F ? var3 + var2.translateKey("options.sensitivity.min") : (var5 == 1.0F ? var3 + var2.translateKey("options.sensitivity.max") : var3 + (int)(var5 * 200.0F) + "%")) : (var5 == 0.0F ? var3 + var2.translateKey("options.off") : var3 + (int)(var5 * 100.0F) + "%");
++			return var1 == EnumOptions.SENSITIVITY ? (var5 == 0.0F ? var3 + var2.translateKey("options.sensitivity.min") : (var5 == 1.0F ? var3 + var2.translateKey("options.sensitivity.max") : var3 + (int)(var5 * 200.0F) + "%")) : (var1 == EnumOptions.FOV ? (var5 == 0.0F ? var3 + var2.translateKey("options.fov.min") : (var5 == 1.0F ? var3 + var2.translateKey("options.fov.max") : var3 + (int)(70.0F + var5 * 40.0F))) : (var5 == 0.0F ? var3 + var2.translateKey("options.off") : var3 + (int)(var5 * 100.0F) + "%"));
+ 		} else if(var1.getEnumBoolean()) {
+ 			boolean var4 = this.getOptionOrdinalValue(var1);
+ 			return var4 ? var3 + var2.translateKey("options.on") : var3 + var2.translateKey("options.off");
+@@ -202,6 +207,10 @@
+ 					if(var3[0].equals("mouseSensitivity")) {
+ 						this.mouseSensitivity = this.parseFloat(var3[1]);
+ 					}
++					
++					if(var3[0].equals("fov")) {
++						this.fovSetting = this.parseFloat(var3[1]);
++					}
+ 
+ 					if(var3[0].equals("invertYMouse")) {
+ 						this.invertMouse = var3[1].equals("true");
+@@ -278,6 +287,7 @@
+ 			var1.println("sound:" + this.soundVolume);
+ 			var1.println("invertYMouse:" + this.invertMouse);
+ 			var1.println("mouseSensitivity:" + this.mouseSensitivity);
++			var1.println("fov:" + this.fovSetting);
+ 			var1.println("viewDistance:" + this.renderDistance);
+ 			var1.println("guiScale:" + this.guiScale);
+ 			var1.println("bobView:" + this.viewBobbing);

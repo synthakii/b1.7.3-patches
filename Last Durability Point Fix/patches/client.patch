@@ -1,0 +1,11 @@
+--- net/minecraft/src/ItemStack.java
++++ net/minecraft/src/ItemStack.java
+@@ -124,7 +124,7 @@
+ 	public void damageItem(int var1, Entity var2) {
+ 		if(this.isItemStackDamageable()) {
+ 			this.itemDamage += var1;
+-			if(this.itemDamage > this.getMaxDamage()) {
++			if(this.itemDamage >= this.getMaxDamage()) {
+ 				if(var2 instanceof EntityPlayer) {
+ 					((EntityPlayer)var2).addStat(StatList.field_25170_B[this.itemID], 1);
+ 				}

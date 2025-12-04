@@ -1,0 +1,65 @@
+--- net/minecraft/src/RenderSheep.java
++++ net/minecraft/src/RenderSheep.java
+@@ -10,10 +10,12 @@
+ 
+ 	protected boolean setWoolColorAndRender(EntitySheep var1, int var2, float var3) {
+ 		if(var2 == 0 && !var1.getSheared()) {
+-			this.loadTexture("/mob/sheep_fur.png");
+-			float var4 = var1.getEntityBrightness(var3);
+-			int var5 = var1.getFleeceColor();
+-			GL11.glColor3f(var4 * EntitySheep.fleeceColorTable[var5][0], var4 * EntitySheep.fleeceColorTable[var5][1], var4 * EntitySheep.fleeceColorTable[var5][2]);
++			if(var1.getFleeceColor() < 0 || var1.getFleeceColor() >= 16) {
++				this.loadTexture("/mob/sheep_fur_0.png");
++			}
++
++			this.loadTexture("/mob/sheep_fur_" + var1.getFleeceColor() + ".png");
++
+ 			return true;
+ 		} else {
+ 			return false;
+--- net/minecraft/src/EntitySheep.java
++++ net/minecraft/src/EntitySheep.java
+@@ -3,11 +3,11 @@
+ import java.util.Random;
+ 
+ public class EntitySheep extends EntityAnimal {
+-	public static final float[][] fleeceColorTable = new float[][]{{1.0F, 1.0F, 1.0F}, {0.95F, 0.7F, 0.2F}, {0.9F, 0.5F, 0.85F}, {0.6F, 0.7F, 0.95F}, {0.9F, 0.9F, 0.2F}, {0.5F, 0.8F, 0.1F}, {0.95F, 0.7F, 0.8F}, {0.3F, 0.3F, 0.3F}, {0.6F, 0.6F, 0.6F}, {0.3F, 0.6F, 0.7F}, {0.7F, 0.4F, 0.9F}, {0.2F, 0.4F, 0.8F}, {0.5F, 0.4F, 0.3F}, {0.4F, 0.5F, 0.2F}, {0.8F, 0.3F, 0.3F}, {0.1F, 0.1F, 0.1F}};
++	int fleeceColor = 15;
+ 
+ 	public EntitySheep(World var1) {
+ 		super(var1);
+-		this.texture = "/mob/sheep.png";
++		this.texture = "/mob/sheep_0.png";
+ 		this.setSize(0.9F, 1.3F);
+ 	}
+ 
+@@ -16,6 +16,14 @@
+ 		this.dataWatcher.addObject(16, new Byte((byte)0));
+ 	}
+ 
++	public String getEntityTexture() {
++		if(this.getFleeceColor() < 0 || this.getFleeceColor() >= 16) {
++			return super.getEntityTexture();
++		}
++
++		return "/mob/sheep_" + this.getFleeceColor() + ".png";
++	}
++
+ 	public boolean attackEntityFrom(Entity var1, int var2) {
+ 		return super.attackEntityFrom(var1, var2);
+ 	}
+@@ -77,12 +85,11 @@
+ 	}
+ 
+ 	public int getFleeceColor() {
+-		return this.dataWatcher.getWatchableObjectByte(16) & 15;
++		return this.fleeceColor;
+ 	}
+ 
+ 	public void setFleeceColor(int var1) {
+-		byte var2 = this.dataWatcher.getWatchableObjectByte(16);
+-		this.dataWatcher.updateObject(16, Byte.valueOf((byte)(var2 & 240 | var1 & 15)));
++		this.fleeceColor = var1;
+ 	}
+ 
+ 	public boolean getSheared() {

@@ -1,0 +1,11 @@
+--- net/minecraft/src/SlotArmor.java
++++ net/minecraft/src/SlotArmor.java
+@@ -17,4 +17,8 @@
+ 	public boolean isItemValid(ItemStack var1) {
+ 		return var1.getItem() instanceof ItemArmor ? ((ItemArmor)var1.getItem()).armorType == this.armorType : (var1.getItem().shiftedIndex == Block.pumpkin.blockID ? this.armorType == 0 : false);
+ 	}
++
++	public int getBackgroundIconIndex() {
++		return 15 + this.armorType * 16;
++	}
+ }

@@ -1,0 +1,20 @@
+--- net/minecraft/src/Block.java
++++ net/minecraft/src/Block.java
+@@ -229,7 +229,16 @@
+ 	}
+ 
+ 	public float getBlockBrightness(IBlockAccess var1, int var2, int var3, int var4) {
+-		return var1.getBrightness(var2, var3, var4, lightValue[this.blockID]);
++		if(var1.getBlockMaterial(var2, var3, var4) == Material.leaves) {
++			float brightness = var1.getBrightness(var2, var3, var4, lightValue[this.blockID]);
++			if(brightness > 0.2F) {
++				brightness = 0.2F;
++			}
++
++			return brightness;
++		} else {
++			return var1.getBrightness(var2, var3, var4, lightValue[this.blockID]);
++		}
+ 	}
+ 
+ 	public boolean shouldSideBeRendered(IBlockAccess var1, int var2, int var3, int var4, int var5) {

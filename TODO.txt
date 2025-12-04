@@ -1,5 +1,4 @@
-Create a mod which backports sheep having all parts of their model colored
-Add sounds for shearing, tools breaking, chests opening, and minecarts rolling
+Add sounds for minecarts rolling
 Fix weird z-issue with the containers text and items
 Fix torches missing the bottom part of the model
 Fix boat dismounting

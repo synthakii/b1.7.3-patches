@@ -1,0 +1,355 @@
+--- net/minecraft/src/WorldRenderer.java
++++ net/minecraft/src/WorldRenderer.java
+@@ -4,6 +4,8 @@
+ import java.util.HashSet;
+ import java.util.List;
+ import org.lwjgl.opengl.GL11;
++import smoothbeta.VboPool;
++import smoothbeta.gl.VertexBuffer;
+ 
+ public class WorldRenderer {
+ 	public World worldObj;
+@@ -38,6 +40,8 @@
+ 	private boolean isInitialized = false;
+ 	public List tileEntityRenderers = new ArrayList();
+ 	private List tileEntities;
++	private VertexBuffer[] buffers;
++	private int currentBufferIndex = -1;
+ 
+ 	public WorldRenderer(World var1, List var2, int var3, int var4, int var5, int var6, int var7) {
+ 		this.worldObj = var1;
+@@ -48,6 +52,13 @@
+ 		this.posX = -999;
+ 		this.setPosition(var3, var4, var5);
+ 		this.needsUpdate = false;
++		this.buffers = new VertexBuffer[this.skipRenderPass.length];
++		VboPool pool = ModLoader.getMinecraftInstance().renderGlobal.getTerrainVboPool();
++
++		for(int i = 0; i < this.buffers.length; ++i) {
++			this.buffers[i] = new VertexBuffer(pool);
++		}
++
+ 	}
+ 
+ 	public void setPosition(int var1, int var2, int var3) {
+@@ -72,10 +83,10 @@
+ 			GL11.glEndList();
+ 			this.markDirty();
+ 		}
++
+ 	}
+ 
+ 	private void setupGLTranslation() {
+-		GL11.glTranslatef((float)this.posXClip, (float)this.posYClip, (float)this.posZClip);
+ 	}
+ 
+ 	public void updateRenderer() {
+@@ -112,15 +123,12 @@
+ 							if(var18 > 0) {
+ 								if(!var14) {
+ 									var14 = true;
+-									GL11.glNewList(this.glRenderList + var11, GL11.GL_COMPILE);
+-									GL11.glPushMatrix();
+ 									this.setupGLTranslation();
+-									float var19 = 1.000001F;
+-									GL11.glTranslatef((float)(-this.sizeDepth) / 2.0F, (float)(-this.sizeHeight) / 2.0F, (float)(-this.sizeDepth) / 2.0F);
+-									GL11.glScalef(var19, var19, var19);
+-									GL11.glTranslatef((float)this.sizeDepth / 2.0F, (float)this.sizeHeight / 2.0F, (float)this.sizeDepth / 2.0F);
++									this.currentBufferIndex = var11;
++									tessellator.startRenderingTerrain(this);
+ 									tessellator.startDrawingQuads();
+ 									tessellator.setTranslationD((double)(-this.posX), (double)(-this.posY), (double)(-this.posZ));
++									tessellator.setTranslationF((float)this.posXClip, (float)this.posYClip, (float)this.posZClip);
+ 								}
+ 
+ 								if(var11 == 0 && Block.isBlockContainer[var18]) {
+@@ -144,8 +152,8 @@
+ 
+ 				if(var14) {
+ 					tessellator.draw();
+-					GL11.glPopMatrix();
+-					GL11.glEndList();
++					this.currentBufferIndex = -1;
++					tessellator.stopRenderingTerrain();
+ 					tessellator.setTranslationD(0.0D, 0.0D, 0.0D);
+ 				} else {
+ 					var13 = false;
+@@ -169,6 +177,7 @@
+ 			this.isChunkLit = Chunk.isLit;
+ 			this.isInitialized = true;
+ 		}
++
+ 	}
+ 
+ 	public float distanceToEntitySquared(Entity var1) {
+@@ -210,5 +219,13 @@
+ 
+ 	public void markDirty() {
+ 		this.needsUpdate = true;
++	}
++
++	public VertexBuffer getBuffer(int pass) {
++		return this.buffers[pass];
++	}
++
++	public VertexBuffer getCurrentBuffer() {
++		return this.buffers[this.currentBufferIndex];
+ 	}
+ }
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.src;
+ 
++import java.nio.FloatBuffer;
+ import java.nio.IntBuffer;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -10,6 +11,15 @@
+ import org.lwjgl.opengl.ARBOcclusionQuery;
+ import org.lwjgl.opengl.GL11;
+ import org.lwjgl.opengl.GL15;
++import org.lwjgl.opengl.GL20;
++import org.lwjgl.opengl.GL30;
++import org.lwjgl.opengl.GL32;
++import org.lwjgl.opengl.GLSync;
++import smoothbeta.Shader;
++import smoothbeta.Shaders;
++import smoothbeta.SmoothRenderList;
++import smoothbeta.VboPool;
++import smoothbeta.VertexFormats;
+ 
+ public class RenderGlobal implements IWorldAccess {
+ 	public List tileEntities = new ArrayList();
+@@ -41,7 +51,7 @@
+ 	private int countEntitiesTotal;
+ 	private int countEntitiesRendered;
+ 	private int countEntitiesHidden;
+-	int[] dummyBuf50k = new int['\uc350'];
++	int[] dummyBuf50k;
+ 	IntBuffer occlusionResult = GLAllocation.createDirectIntBuffer(64);
+ 	private int renderersLoaded;
+ 	private int renderersBeingClipped;
+@@ -50,7 +60,7 @@
+ 	private int renderersSkippingRenderPass;
+ 	private int worldRenderersCheckIndex;
+ 	private List glRenderLists = new ArrayList();
+-	private RenderList[] allRenderLists = new RenderList[]{new RenderList(), new RenderList(), new RenderList(), new RenderList()};
++	private SmoothRenderList[] T = new SmoothRenderList[]{new SmoothRenderList(this), new SmoothRenderList(this), new SmoothRenderList(this), new SmoothRenderList(this)};
+ 	int dummyInt0 = 0;
+ 	int glDummyList = GLAllocation.generateDisplayLists(1);
+ 	double prevSortX = -9999.0D;
+@@ -58,6 +68,9 @@
+ 	double prevSortZ = -9999.0D;
+ 	public float damagePartialTime;
+ 	int frustrumCheckOffset = 0;
++	private VboPool vboPool;
++	private final FloatBuffer modelViewMatrix = GLAllocation.createDirectFloatBuffer(16);
++	private final FloatBuffer projectionMatrix = GLAllocation.createDirectFloatBuffer(16);
+ 
+ 	public RenderGlobal(Minecraft var1, RenderEngine var2) {
+ 		this.mc = var1;
+@@ -185,6 +198,11 @@
+ 	}
+ 
+ 	public void loadRenderers() {
++		if(this.vboPool != null) {
++			this.vboPool.deleteGlBuffers();
++		}
++
++		this.vboPool = new VboPool(VertexFormats.POSITION_TEXTURE_COLOR_NORMAL);
+ 		Block.leaves.setGraphicsLevel(this.mc.gameSettings.fancyGraphics);
+ 		this.renderDistance = this.mc.gameSettings.renderDistance;
+ 		int var1;
+@@ -194,8 +212,8 @@
+ 			}
+ 		}
+ 
+-		var1 = 64 << 3 - this.renderDistance;
+-		if(var1 > 400) {
++		var1 = ((4 << 3 - this.renderDistance) + mod_SmoothBetaML.extended_chunk_view) * 16;
++		if(mod_SmoothBetaML.vanilla_render_distance_functionality && var1 > 400) {
+ 			var1 = 400;
+ 		}
+ 
+@@ -419,6 +437,12 @@
+ 			Arrays.sort(this.sortedWorldRenderers, new EntitySorter(var1));
+ 		}
+ 
++		if(var2 == 0) {
++			GLSync var17 = GL32.glFenceSync('\u9117', 0);
++			GL32.glClientWaitSync(var17, 1, 0L);
++			GL32.glDeleteSync(var17);
++		}
++
+ 		RenderHelper.disableStandardItemLighting();
+ 		byte var17 = 0;
+ 		int var34;
+@@ -561,8 +585,8 @@
+ 		int var14 = 0;
+ 
+ 		int var15;
+-		for(var15 = 0; var15 < this.allRenderLists.length; ++var15) {
+-			this.allRenderLists[var15].func_859_b();
++		for(var15 = 0; var15 < this.T.length; ++var15) {
++			this.T[var15].func_859_b();
+ 		}
+ 
+ 		for(var15 = 0; var15 < this.glRenderLists.size(); ++var15) {
+@@ -570,17 +594,17 @@
+ 			int var17 = -1;
+ 
+ 			for(int var18 = 0; var18 < var14; ++var18) {
+-				if(this.allRenderLists[var18].func_862_a(var16.posXMinus, var16.posYMinus, var16.posZMinus)) {
++				if(this.T[var18].func_862_a(var16.posXMinus, var16.posYMinus, var16.posZMinus)) {
+ 					var17 = var18;
+ 				}
+ 			}
+ 
+ 			if(var17 < 0) {
+ 				var17 = var14++;
+-				this.allRenderLists[var17].func_861_a(var16.posXMinus, var16.posYMinus, var16.posZMinus, var20, var10, var12);
++				this.T[var17].func_861_a(var16.posXMinus, var16.posYMinus, var16.posZMinus, var20, var10, var12);
+ 			}
+ 
+-			this.allRenderLists[var17].func_858_a(var16.getGLCallListForPass(var3));
++			this.T[var17].addBuffer(var16.getBuffer(var3));
+ 		}
+ 
+ 		this.renderAllRenderLists(var3, var4);
+@@ -588,10 +612,41 @@
+ 	}
+ 
+ 	public void renderAllRenderLists(int var1, double var2) {
+-		for(int var4 = 0; var4 < this.allRenderLists.length; ++var4) {
+-			this.allRenderLists[var4].func_860_a();
+-		}
+-
++		Shader shader = Shaders.getTerrainShader();
++		shader.addSampler("Sampler0", Integer.valueOf(0));
++		GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, (FloatBuffer)this.modelViewMatrix.clear());
++		shader.modelViewMat.set((FloatBuffer)this.modelViewMatrix.position(0));
++		GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, (FloatBuffer)this.projectionMatrix.clear());
++		shader.projectionMat.set((FloatBuffer)this.projectionMatrix.position(0));
++		byte fogMode = 0;
++		switch(GL11.glGetInteger(GL11.GL_FOG_MODE)) {
++		case 2048:
++			break;
++		case 2049:
++			fogMode = 1;
++			break;
++		case 9729:
++			fogMode = 2;
++			break;
++		default:
++			throw new IllegalStateException("Unexpected value: " + GL11.glGetInteger(GL11.GL_FOG_MODE));
++		}
++
++		shader.fogMode.set(fogMode);
++		shader.bind();
++
++		for(int var4 = 0; var4 < this.T.length; ++var4) {
++			this.T[var4].func_860_a();
++		}
++
++		Shaders.getTerrainShader().unbind();
++		GL20.glDisableVertexAttribArray(0);
++		GL20.glDisableVertexAttribArray(1);
++		GL20.glDisableVertexAttribArray(2);
++		GL20.glDisableVertexAttribArray(3);
++		GL30.glBindVertexArray(0);
++		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
++		GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+ 	}
+ 
+ 	public void updateClouds() {
+@@ -1095,6 +1150,7 @@
+ 				GL11.glEnable(GL11.GL_ALPHA_TEST);
+ 				var6.startDrawingQuads();
+ 				var6.setTranslationD(-var10, -var12, -var14);
++				GL11.glScalef(0.9999962F, 0.9999962F, 0.9999962F);
+ 				var6.disableColor();
+ 				this.globalRenderBlocks.renderBlockUsingTexture(var9, var2.blockX, var2.blockY, var2.blockZ, 240 + (int)(this.damagePartialTime * 10.0F));
+ 				var6.draw();
+@@ -1415,5 +1471,9 @@
+ 			this.mc.effectRenderer.addBlockDestroyEffects(var3, var4, var5, var6 & 255, var6 >> 8 & 255);
+ 		}
+ 
++	}
++
++	public VboPool getTerrainVboPool() {
++		return this.vboPool;
+ 	}
+ }
+--- net/minecraft/src/Tessellator.java
++++ net/minecraft/src/Tessellator.java
+@@ -38,6 +38,8 @@
+ 	private int vboIndex = 0;
+ 	private int vboCount = 10;
+ 	private int bufferSize;
++	private boolean renderingTerrain;
++	private WorldRenderer worldRenderer;
+ 
+ 	private Tessellator(int var1) {
+ 		this.bufferSize = var1;
+@@ -63,6 +65,12 @@
+ 				this.intBuffer.put(this.rawBuffer, 0, this.rawBufferIndex);
+ 				this.byteBuffer.position(0);
+ 				this.byteBuffer.limit(this.rawBufferIndex * 4);
++				if(this.renderingTerrain) {
++					this.worldRenderer.getCurrentBuffer().upload(this.byteBuffer);
++					this.reset();
++					return;
++				}
++
+ 				if(this.useVBO) {
+ 					this.vboIndex = (this.vboIndex + 1) % this.vboCount;
+ 					ARBVertexBufferObject.glBindBufferARB(GL15.GL_ARRAY_BUFFER, this.vertexBuffers.get(this.vboIndex));
+@@ -217,8 +225,8 @@
+ 			} else {
+ 				this.color = var1 << 24 | var2 << 16 | var3 << 8 | var4;
+ 			}
+-
+ 		}
++
+ 	}
+ 
+ 	public void addVertexWithUV(double var1, double var3, double var5, double var7, double var9) {
+@@ -228,7 +236,7 @@
+ 
+ 	public void addVertex(double var1, double var3, double var5) {
+ 		++this.addedVertices;
+-		if(this.drawMode == 7 && convertQuadsToTriangles && this.addedVertices % 4 == 0) {
++		if(this.drawMode == (this.renderingTerrain ? -1 : 7) && convertQuadsToTriangles && this.addedVertices % 4 == 0) {
+ 			for(int var7 = 0; var7 < 2; ++var7) {
+ 				int var8 = 8 * (3 - var7);
+ 				if(this.hasTexture) {
+@@ -264,7 +272,7 @@
+ 		this.rawBuffer[this.rawBufferIndex + 0] = Float.floatToRawIntBits((float)(var1 + this.xOffset));
+ 		this.rawBuffer[this.rawBufferIndex + 1] = Float.floatToRawIntBits((float)(var3 + this.yOffset));
+ 		this.rawBuffer[this.rawBufferIndex + 2] = Float.floatToRawIntBits((float)(var5 + this.zOffset));
+-		this.rawBufferIndex += 8;
++		this.rawBufferIndex += this.renderingTerrain ? 7 : 8;
+ 		++this.vertexCount;
+ 		if(this.vertexCount % 4 == 0 && this.rawBufferIndex >= this.bufferSize - 32) {
+ 			this.draw();
+@@ -313,5 +321,19 @@
+ 		this.xOffset += (double)var1;
+ 		this.yOffset += (double)var2;
+ 		this.zOffset += (double)var3;
++	}
++
++	public void startRenderingTerrain(WorldRenderer worldRenderer) {
++		this.renderingTerrain = true;
++		this.worldRenderer = worldRenderer;
++	}
++
++	public void stopRenderingTerrain() {
++		this.renderingTerrain = false;
++		this.worldRenderer = null;
++	}
++
++	public boolean isRenderingTerrain() {
++		return this.renderingTerrain;
+ 	}
+ }

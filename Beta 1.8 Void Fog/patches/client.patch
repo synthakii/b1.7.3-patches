@@ -1,0 +1,406 @@
+--- net/minecraft/src/World.java
++++ net/minecraft/src/World.java
+@@ -613,6 +613,31 @@
+ 		}
+ 	}
+ 
++	public int getSkyBlockTypeBrightness(EnumSkyBlock var1, int var2, int var3, int var4) {
++		if(this.worldProvider.hasNoSky && var1 == EnumSkyBlock.Sky) {
++			return 0;
++		} else {
++			if(var3 < 0) {
++				var3 = 0;
++			}
++
++			if(var3 >= 128 && var1 == EnumSkyBlock.Sky) {
++				return 15;
++			} else if(var3 >= 0 && var3 < 128 && var2 >= -30000000 && var4 >= -30000000 && var2 < 30000000 && var4 < 30000000) {
++				int var5 = var2 >> 4;
++				int var6 = var4 >> 4;
++				if(!this.chunkExists(var5, var6)) {
++					return 0;
++				} else {
++					Chunk var7 = this.getChunkFromChunkCoords(var5, var6);
++					return var7.getSavedLightValue(var1, var2 & 15, var3, var4 & 15);
++				}
++			} else {
++				return var1.field_1722_c;
++			}
++		}
++	}
++
+ 	public void neighborLightPropagationChanged(EnumSkyBlock var1, int var2, int var3, int var4, int var5) {
+ 		if(!this.worldProvider.hasNoSky || var1 != EnumSkyBlock.Sky) {
+ 			if(this.blockExists(var2, var3, var4)) {
+@@ -676,6 +701,16 @@
+ 		}
+ 	}
+ 
++	public int getLightBrightnessForSkyBlocks(int var1, int var2, int var3, int var4) {
++		int var5 = this.getSkyBlockTypeBrightness(EnumSkyBlock.Sky, var1, var2, var3);
++		int var6 = this.getSkyBlockTypeBrightness(EnumSkyBlock.Block, var1, var2, var3);
++		if(var6 < var4) {
++			var6 = var4;
++		}
++
++		return var5 << 20 | var6 << 4;
++	}
++
+ 	public float getBrightness(int var1, int var2, int var3, int var4) {
+ 		int var5 = this.getBlockLightValue(var1, var2, var3);
+ 		if(var5 < var4) {
+@@ -1996,6 +2031,10 @@
+ 			int var8 = var2 + this.rand.nextInt(var4) - this.rand.nextInt(var4);
+ 			int var9 = var3 + this.rand.nextInt(var4) - this.rand.nextInt(var4);
+ 			int var10 = this.getBlockId(var7, var8, var9);
++			if(this.rand.nextInt(8) > var8 && var10 == 0) {
++				this.spawnParticle("depthsuspend", (double)((float)var7 + this.rand.nextFloat()), (double)((float)var8 + this.rand.nextFloat()), (double)((float)var9 + this.rand.nextFloat()), 0.0D, 0.0D, 0.0D);
++			}
++			
+ 			if(var10 > 0) {
+ 				Block.blocksList[var10].randomDisplayTick(this, var7, var8, var9, var5);
+ 			}
+--- /dev/null
++++ net/minecraft/src/EntityAuraFX.java
+@@ -1,0 +1,33 @@
++package net.minecraft.src;
++
++public class EntityAuraFX extends EntityFX {
++	public EntityAuraFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12) {
++		super(var1, var2, var4, var6, var8, var10, var12);
++		float var14 = this.rand.nextFloat() * 0.1F + 0.2F;
++		this.particleRed = var14;
++		this.particleGreen = var14;
++		this.particleBlue = var14;
++		this.particleTextureIndex = 0;
++		this.setSize(0.02F, 0.02F);
++		this.particleScale *= this.rand.nextFloat() * 0.6F + 0.5F;
++		this.motionX *= (double)0.02F;
++		this.motionY *= (double)0.02F;
++		this.motionZ *= (double)0.02F;
++		this.particleMaxAge = (int)(20.0D / (Math.random() * 0.8D + 0.2D));
++		this.noClip = true;
++	}
++
++	public void onUpdate() {
++		this.prevPosX = this.posX;
++		this.prevPosY = this.posY;
++		this.prevPosZ = this.posZ;
++		this.moveEntity(this.motionX, this.motionY, this.motionZ);
++		this.motionX *= 0.99D;
++		this.motionY *= 0.99D;
++		this.motionZ *= 0.99D;
++		if(this.particleMaxAge-- <= 0) {
++			this.setEntityDead();
++		}
++
++	}
++}
+--- net/minecraft/src/EntityRenderer.java
++++ net/minecraft/src/EntityRenderer.java
+@@ -839,6 +839,18 @@
+ 		this.fogColorRed *= var12;
+ 		this.fogColorGreen *= var12;
+ 		this.fogColorBlue *= var12;
++		double var58 = (var3.lastTickPosY + (var3.posY - var3.lastTickPosY) * (double)var1) / 32.0D;
++		if(var58 < 1.0D) {
++			if(var58 < 0.0D) {
++				var58 = 0.0D;
++			}
++
++			var58 *= var58;
++			this.fogColorRed = (float)((double)this.fogColorRed * var58);
++			this.fogColorGreen = (float)((double)this.fogColorGreen * var58);
++			this.fogColorBlue = (float)((double)this.fogColorBlue * var58);
++		}
++		
+ 		if(this.mc.gameSettings.anaglyph) {
+ 			float var13 = (this.fogColorRed * 30.0F + this.fogColorGreen * 59.0F + this.fogColorBlue * 11.0F) / 100.0F;
+ 			float var14 = (this.fogColorRed * 30.0F + this.fogColorGreen * 70.0F) / 100.0F;
+@@ -853,63 +865,95 @@
+ 
+ 	private void setupFog(int var1, float var2) {
+ 		EntityLiving var3 = this.mc.renderViewEntity;
+-		GL11.glFog(GL11.GL_FOG_COLOR, this.func_908_a(this.fogColorRed, this.fogColorGreen, this.fogColorBlue, 1.0F));
+-		GL11.glNormal3f(0.0F, -1.0F, 0.0F);
+-		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+-		float var4;
+-		float var5;
+-		float var6;
+-		float var7;
+-		float var8;
+-		float var9;
+-		if(this.cloudFog) {
+-			GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
+-			GL11.glFogf(GL11.GL_FOG_DENSITY, 0.1F);
+-			var4 = 1.0F;
+-			var5 = 1.0F;
+-			var6 = 1.0F;
+-			if(this.mc.gameSettings.anaglyph) {
+-				var7 = (var4 * 30.0F + var5 * 59.0F + var6 * 11.0F) / 100.0F;
+-				var8 = (var4 * 30.0F + var5 * 70.0F) / 100.0F;
+-				var9 = (var4 * 30.0F + var6 * 70.0F) / 100.0F;
+-			}
+-		} else if(var3.isInsideOfMaterial(Material.water)) {
+-			GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
+-			GL11.glFogf(GL11.GL_FOG_DENSITY, 0.1F);
+-			var4 = 0.4F;
+-			var5 = 0.4F;
+-			var6 = 0.9F;
+-			if(this.mc.gameSettings.anaglyph) {
+-				var7 = (var4 * 30.0F + var5 * 59.0F + var6 * 11.0F) / 100.0F;
+-				var8 = (var4 * 30.0F + var5 * 70.0F) / 100.0F;
+-				var9 = (var4 * 30.0F + var6 * 70.0F) / 100.0F;
+-			}
+-		} else if(var3.isInsideOfMaterial(Material.lava)) {
+-			GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
+-			GL11.glFogf(GL11.GL_FOG_DENSITY, 2.0F);
+-			var4 = 0.4F;
+-			var5 = 0.3F;
+-			var6 = 0.3F;
+-			if(this.mc.gameSettings.anaglyph) {
+-				var7 = (var4 * 30.0F + var5 * 59.0F + var6 * 11.0F) / 100.0F;
+-				var8 = (var4 * 30.0F + var5 * 70.0F) / 100.0F;
+-				var9 = (var4 * 30.0F + var6 * 70.0F) / 100.0F;
+-			}
+-		} else {
++		if(var1 == 999) {
++			GL11.glFog(GL11.GL_FOG_COLOR, this.func_908_a(0.0F, 0.0F, 0.0F, 1.0F));
+ 			GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
+-			GL11.glFogf(GL11.GL_FOG_START, this.farPlaneDistance * 0.25F);
+-			GL11.glFogf(GL11.GL_FOG_END, this.farPlaneDistance);
+-			if(var1 < 0) {
+-				GL11.glFogf(GL11.GL_FOG_START, 0.0F);
+-				GL11.glFogf(GL11.GL_FOG_END, this.farPlaneDistance * 0.8F);
+-			}
+-
++			GL11.glFogf(GL11.GL_FOG_START, 0.0F);
++			GL11.glFogf(GL11.GL_FOG_END, 8.0F);
+ 			if(GLContext.getCapabilities().GL_NV_fog_distance) {
+ 				GL11.glFogi(NVFogDistance.GL_FOG_DISTANCE_MODE_NV, NVFogDistance.GL_EYE_RADIAL_NV);
+ 			}
+ 
+-			if(this.mc.theWorld.worldProvider.isNether) {
+-				GL11.glFogf(GL11.GL_FOG_START, 0.0F);
++			GL11.glFogf(GL11.GL_FOG_START, 0.0F);
++		} else {
++			GL11.glFog(GL11.GL_FOG_COLOR, this.func_908_a(this.fogColorRed, this.fogColorGreen, this.fogColorBlue, 1.0F));
++			GL11.glNormal3f(0.0F, -1.0F, 0.0F);
++			GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
++			float var4;
++			float var5;
++			float var6;
++			float var7;
++			float var8;
++			float var9;
++			if(this.cloudFog) {
++				GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
++				GL11.glFogf(GL11.GL_FOG_DENSITY, 0.1F);
++				var4 = 1.0F;
++				var5 = 1.0F;
++				var6 = 1.0F;
++				if(this.mc.gameSettings.anaglyph) {
++					var7 = (var4 * 30.0F + var5 * 59.0F + var6 * 11.0F) / 100.0F;
++					var8 = (var4 * 30.0F + var5 * 70.0F) / 100.0F;
++					var9 = (var4 * 30.0F + var6 * 70.0F) / 100.0F;
++				}
++			} else if(var3.isInsideOfMaterial(Material.water)) {
++				GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
++				GL11.glFogf(GL11.GL_FOG_DENSITY, 0.1F);
++				var4 = 0.4F;
++				var5 = 0.4F;
++				var6 = 0.9F;
++				if(this.mc.gameSettings.anaglyph) {
++					var7 = (var4 * 30.0F + var5 * 59.0F + var6 * 11.0F) / 100.0F;
++					var8 = (var4 * 30.0F + var5 * 70.0F) / 100.0F;
++					var9 = (var4 * 30.0F + var6 * 70.0F) / 100.0F;
++				}
++			} else if(var3.isInsideOfMaterial(Material.lava)) {
++				GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_EXP);
++				GL11.glFogf(GL11.GL_FOG_DENSITY, 2.0F);
++				var4 = 0.4F;
++				var5 = 0.3F;
++				var6 = 0.3F;
++				if(this.mc.gameSettings.anaglyph) {
++					var7 = (var4 * 30.0F + var5 * 59.0F + var6 * 11.0F) / 100.0F;
++					var8 = (var4 * 30.0F + var5 * 70.0F) / 100.0F;
++					var9 = (var4 * 30.0F + var6 * 70.0F) / 100.0F;
++				}
++			} else {
++				if(!this.mc.theWorld.worldProvider.hasNoSky) {
++					double var12 = (double)((var3.getEntityBrightnessForRender(var2) & 15728640) >> 20) / 16.0D + (var3.lastTickPosY + (var3.posY - var3.lastTickPosY) * (double)var2 + 4.0D) / 32.0D;
++					if(var12 < 1.0D) {
++						if(var12 < 0.0D) {
++							var12 = 0.0D;
++						}
++
++						var12 *= var12;
++						var8 = 100.0F * (float)var12;
++						if(var8 < 5.0F) {
++							var8 = 5.0F;
++						}
++
++						if(this.farPlaneDistance > var8) {
++							this.farPlaneDistance = var8;
++						}
++					}
++				}
++
++				GL11.glFogi(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
++				if(var1 < 0) {
++					GL11.glFogf(GL11.GL_FOG_START, 0.0F);
++					GL11.glFogf(GL11.GL_FOG_END, this.farPlaneDistance * 0.8F);
++				} else {
++					GL11.glFogf(GL11.GL_FOG_START, this.farPlaneDistance * 0.25F);
++					GL11.glFogf(GL11.GL_FOG_END, this.farPlaneDistance);
++				}
++
++				if(GLContext.getCapabilities().GL_NV_fog_distance) {
++					GL11.glFogi(NVFogDistance.GL_FOG_DISTANCE_MODE_NV, NVFogDistance.GL_EYE_RADIAL_NV);
++				}
++
++				if(this.mc.theWorld.worldProvider.isNether) {
++					GL11.glFogf(GL11.GL_FOG_START, 0.0F);
++				}
+ 			}
+ 		}
+ 
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -709,14 +709,52 @@
+ 			GL11.glEnable(GL11.GL_ALPHA_TEST);
+ 			GL11.glEnable(GL11.GL_FOG);
+ 			GL11.glPopMatrix();
++			GL11.glDisable(GL11.GL_TEXTURE_2D);
++			GL11.glColor3f(0.0F, 0.0F, 0.0F);
++			double var30 = this.mc.thePlayer.getPosition(var1).yCoord - 63.0D;
++			if(var30 < 0.0D) {
++				GL11.glPushMatrix();
++				GL11.glTranslatef(0.0F, 12.0F, 0.0F);
++				GL11.glCallList(this.glSkyList2);
++				GL11.glPopMatrix();
++				var9 = 1.0F;
++				var10 = -((float)(var30 + 65.0D));
++				var11 = -var9;
++				var17.startDrawingQuads();
++				var17.setColorRGBA_I(0, 255);
++				var17.addVertex((double)(-var9), (double)var10, (double)var9);
++				var17.addVertex((double)var9, (double)var10, (double)var9);
++				var17.addVertex((double)var9, (double)var11, (double)var9);
++				var17.addVertex((double)(-var9), (double)var11, (double)var9);
++				var17.addVertex((double)(-var9), (double)var11, (double)(-var9));
++				var17.addVertex((double)var9, (double)var11, (double)(-var9));
++				var17.addVertex((double)var9, (double)var10, (double)(-var9));
++				var17.addVertex((double)(-var9), (double)var10, (double)(-var9));
++				var17.addVertex((double)var9, (double)var11, (double)(-var9));
++				var17.addVertex((double)var9, (double)var11, (double)var9);
++				var17.addVertex((double)var9, (double)var10, (double)var9);
++				var17.addVertex((double)var9, (double)var10, (double)(-var9));
++				var17.addVertex((double)(-var9), (double)var10, (double)(-var9));
++				var17.addVertex((double)(-var9), (double)var10, (double)var9);
++				var17.addVertex((double)(-var9), (double)var11, (double)var9);
++				var17.addVertex((double)(-var9), (double)var11, (double)(-var9));
++				var17.addVertex((double)(-var9), (double)var11, (double)(-var9));
++				var17.addVertex((double)(-var9), (double)var11, (double)var9);
++				var17.addVertex((double)var9, (double)var11, (double)var9);
++				var17.addVertex((double)var9, (double)var11, (double)(-var9));
++				var17.draw();
++			}
++
+ 			if(this.worldObj.worldProvider.func_28112_c()) {
+ 				GL11.glColor3f(var3 * 0.2F + 0.04F, var4 * 0.2F + 0.04F, var5 * 0.6F + 0.1F);
+ 			} else {
+ 				GL11.glColor3f(var3, var4, var5);
+ 			}
+ 
+-			GL11.glDisable(GL11.GL_TEXTURE_2D);
++			GL11.glPushMatrix();
++			GL11.glTranslatef(0.0F, -((float)(var30 - 16.0D)), 0.0F);
+ 			GL11.glCallList(this.glSkyList2);
++			GL11.glPopMatrix();
+ 			GL11.glEnable(GL11.GL_TEXTURE_2D);
+ 			GL11.glDepthMask(true);
+ 		}
+@@ -1282,6 +1320,8 @@
+ 			if(var14 * var14 + var16 * var16 + var18 * var18 <= var20 * var20) {
+ 				if(var1.equals("bubble")) {
+ 					this.mc.effectRenderer.addEffect(new EntityBubbleFX(this.worldObj, var2, var4, var6, var8, var10, var12));
++				} else if(var1.equals("depthsuspend")) {
++					this.mc.effectRenderer.addEffect(new EntityAuraFX(this.worldObj, var2, var4, var6, var8, var10, var12));
+ 				} else if(var1.equals("smoke")) {
+ 					this.mc.effectRenderer.addEffect(new EntitySmokeFX(this.worldObj, var2, var4, var6, var8, var10, var12));
+ 				} else if(var1.equals("note")) {
+--- net/minecraft/src/Entity.java
++++ net/minecraft/src/Entity.java
+@@ -584,6 +584,18 @@
+ 		}
+ 	}
+ 
++	public int getEntityBrightnessForRender(float var1) {
++		int var2 = MathHelper.floor_double(this.posX);
++		int var3 = MathHelper.floor_double(this.posZ);
++		if(this.worldObj.blockExists(var2, 128 / 2, var3)) {
++			double var4 = (this.boundingBox.maxY - this.boundingBox.minY) * 0.66D;
++			int var6 = MathHelper.floor_double(this.posY - (double)this.yOffset + var4);
++			return this.worldObj.getLightBrightnessForSkyBlocks(var2, var6, var3, 0);
++		} else {
++			return 0;
++		}
++	}
++
+ 	public float getEntityBrightness(float var1) {
+ 		int var2 = MathHelper.floor_double(this.posX);
+ 		double var3 = (this.boundingBox.maxY - this.boundingBox.minY) * 0.66D;
+--- net/minecraft/src/ChunkPosition.java
++++ net/minecraft/src/ChunkPosition.java
+@@ -11,6 +11,10 @@
+ 		this.z = var3;
+ 	}
+ 
++	public ChunkPosition(Vec3D var1) {
++		this(MathHelper.floor_double(var1.xCoord), MathHelper.floor_double(var1.yCoord), MathHelper.floor_double(var1.zCoord));
++	}
++
+ 	public boolean equals(Object var1) {
+ 		if(!(var1 instanceof ChunkPosition)) {
+ 			return false;
+--- /dev/null
++++ net/minecraft/src/ActiveRenderInfo.java
+@@ -1,0 +1,37 @@
++package net.minecraft.src;
++
++import java.nio.FloatBuffer;
++import java.nio.IntBuffer;
++import org.lwjgl.opengl.GL11;
++import org.lwjgl.util.glu.GLU;
++
++public class ActiveRenderInfo {
++	public static float field_41074_a = 0.0F;
++	public static float field_41072_b = 0.0F;
++	public static float field_41073_c = 0.0F;
++
++	public static Vec3D func_41065_a(EntityLiving var0, double var1) {
++		double var3 = var0.prevPosX + (var0.posX - var0.prevPosX) * var1;
++		double var5 = var0.prevPosY + (var0.posY - var0.prevPosY) * var1 + (double)var0.getEyeHeight();
++		double var7 = var0.prevPosZ + (var0.posZ - var0.prevPosZ) * var1;
++		double var9 = var3 + (double)(field_41074_a * 1.0F);
++		double var11 = var5 + (double)(field_41072_b * 1.0F);
++		double var13 = var7 + (double)(field_41073_c * 1.0F);
++		return Vec3D.createVector(var9, var11, var13);
++	}
++
++	public static int func_41066_a(World var0, EntityLiving var1, float var2) {
++		Vec3D var3 = func_41065_a(var1, (double)var2);
++		ChunkPosition var4 = new ChunkPosition(var3);
++		int var5 = var0.getBlockId(var4.x, var4.y, var4.z);
++		if(var5 != 0 && Block.blocksList[var5].blockMaterial.getIsLiquid()) {
++			float var6 = BlockFluid.getPercentAir(var0.getBlockMetadata(var4.x, var4.y, var4.z)) - 1.0F / 9.0F;
++			float var7 = (float)(var4.y + 1) - var6;
++			if(var3.yCoord >= (double)var7) {
++				var5 = var0.getBlockId(var4.x, var4.y + 1, var4.z);
++			}
++		}
++
++		return var5;
++	}
++}

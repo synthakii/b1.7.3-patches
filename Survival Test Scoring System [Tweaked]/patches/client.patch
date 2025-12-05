@@ -1,0 +1,130 @@
+--- net/minecraft/src/EntityPig.java
++++ net/minecraft/src/EntityPig.java
+@@ -5,6 +5,7 @@
+ 		super(var1);
+ 		this.texture = "/mob/pig.png";
+ 		this.setSize(0.9F, 0.9F);
++		this.scoreValue = 10;
+ 	}
+ 
+ 	protected void entityInit() {
+--- net/minecraft/src/EntityCow.java
++++ net/minecraft/src/EntityCow.java
+@@ -5,6 +5,7 @@
+ 		super(var1);
+ 		this.texture = "/mob/cow.png";
+ 		this.setSize(0.9F, 1.3F);
++		this.scoreValue = 10;
+ 	}
+ 
+ 	public void writeEntityToNBT(NBTTagCompound var1) {
+--- net/minecraft/src/EntityCreeper.java
++++ net/minecraft/src/EntityCreeper.java
+@@ -7,6 +7,7 @@
+ 	public EntityCreeper(World var1) {
+ 		super(var1);
+ 		this.texture = "/mob/creeper.png";
++		this.scoreValue = 200;
+ 	}
+ 
+ 	protected void entityInit() {
+--- net/minecraft/src/EntitySpider.java
++++ net/minecraft/src/EntitySpider.java
+@@ -6,6 +6,7 @@
+ 		this.texture = "/mob/spider.png";
+ 		this.setSize(1.4F, 0.9F);
+ 		this.moveSpeed = 0.8F;
++		this.scoreValue = 100;
+ 	}
+ 
+ 	public double getMountedYOffset() {
+--- net/minecraft/src/EntityPigZombie.java
++++ net/minecraft/src/EntityPigZombie.java
+@@ -13,6 +13,7 @@
+ 		this.moveSpeed = 0.5F;
+ 		this.attackStrength = 5;
+ 		this.isImmuneToFire = true;
++		this.scoreValue = 50;
+ 	}
+ 
+ 	public void onUpdate() {
+--- net/minecraft/src/EntityFish.java
++++ net/minecraft/src/EntityFish.java
+@@ -367,6 +367,7 @@
+ 			var13.motionZ = var7 * var11;
+ 			this.worldObj.entityJoinedWorld(var13);
+ 			this.angler.addStat(StatList.fishCaughtStat, 1);
++			this.angler.score += 10;
+ 			var1 = 1;
+ 		}
+ 
+--- net/minecraft/src/EntitySkeleton.java
++++ net/minecraft/src/EntitySkeleton.java
+@@ -6,6 +6,7 @@
+ 	public EntitySkeleton(World var1) {
+ 		super(var1);
+ 		this.texture = "/mob/skeleton.png";
++		this.scoreValue = 100;
+ 	}
+ 
+ 	protected String getLivingSound() {
+--- net/minecraft/src/EntitySquid.java
++++ net/minecraft/src/EntitySquid.java
+@@ -21,6 +21,7 @@
+ 		this.texture = "/mob/squid.png";
+ 		this.setSize(0.95F, 0.95F);
+ 		this.field_21080_l = 1.0F / (this.rand.nextFloat() + 1.0F) * 0.2F;
++		this.scoreValue = 10;
+ 	}
+ 
+ 	public void writeEntityToNBT(NBTTagCompound var1) {
+--- net/minecraft/src/EntityChicken.java
++++ net/minecraft/src/EntityChicken.java
+@@ -15,6 +15,7 @@
+ 		this.setSize(0.3F, 0.4F);
+ 		this.health = 4;
+ 		this.timeUntilNextEgg = this.rand.nextInt(6000) + 6000;
++		this.scoreValue = 10;
+ 	}
+ 
+ 	public void onLivingUpdate() {
+--- net/minecraft/src/EntityZombie.java
++++ net/minecraft/src/EntityZombie.java
+@@ -6,6 +6,7 @@
+ 		this.texture = "/mob/zombie.png";
+ 		this.moveSpeed = 0.5F;
+ 		this.attackStrength = 5;
++		this.scoreValue = 50;
+ 	}
+ 
+ 	public void onLivingUpdate() {
+--- net/minecraft/src/EntitySheep.java
++++ net/minecraft/src/EntitySheep.java
+@@ -9,6 +9,7 @@
+ 		super(var1);
+ 		this.texture = "/mob/sheep.png";
+ 		this.setSize(0.9F, 1.3F);
++		this.scoreValue = 10;
+ 	}
+ 
+ 	protected void entityInit() {
+--- net/minecraft/src/EntitySlime.java
++++ net/minecraft/src/EntitySlime.java
+@@ -12,6 +12,7 @@
+ 		this.yOffset = 0.0F;
+ 		this.slimeJumpDelay = this.rand.nextInt(20) + 10;
+ 		this.setSlimeSize(var2);
++		this.scoreValue = 50;
+ 	}
+ 
+ 	protected void entityInit() {
+--- net/minecraft/src/EntityGhast.java
++++ net/minecraft/src/EntityGhast.java
+@@ -15,6 +15,7 @@
+ 		this.texture = "/mob/ghast.png";
+ 		this.setSize(4.0F, 4.0F);
+ 		this.isImmuneToFire = true;
++		this.scoreValue = 200;
+ 	}
+ 
+ 	protected void entityInit() {

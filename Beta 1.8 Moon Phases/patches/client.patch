@@ -1,0 +1,75 @@
+--- net/minecraft/src/World.java
++++ net/minecraft/src/World.java
+@@ -1066,6 +1066,10 @@
+ 		return this.worldProvider.calculateCelestialAngle(this.worldInfo.getWorldTime(), var1);
+ 	}
+ 
++	public int func_40475_d(float var1) {
++		return this.worldProvider.func_40470_b(this.worldInfo.getWorldTime(), var1);
++	}
++
+ 	public Vec3D func_628_d(float var1) {
+ 		float var2 = this.getCelestialAngle(var1);
+ 		float var3 = MathHelper.cos(var2 * (float)Math.PI * 2.0F) * 2.0F + 0.5F;
+--- net/minecraft/src/WorldProvider.java
++++ net/minecraft/src/WorldProvider.java
+@@ -56,6 +56,10 @@
+ 		return var5;
+ 	}
+ 
++	public int func_40470_b(long var1, float var3) {
++		return (int)(var1 / 24000L) % 8;
++	}
++
+ 	public float[] calcSunriseSunsetColors(float var1, float var2) {
+ 		float var3 = 0.4F;
+ 		float var4 = MathHelper.cos(var1 * (float)Math.PI * 2.0F) - 0.0F;
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -632,6 +632,8 @@
+ 			float var10;
+ 			float var11;
+ 			float var12;
++			float var16;
++			int var20;
+ 			if(var18 != null) {
+ 				GL11.glDisable(GL11.GL_TEXTURE_2D);
+ 				GL11.glShadeModel(GL11.GL_SMOOTH);
+@@ -658,10 +660,10 @@
+ 				byte var19 = 16;
+ 				var17.setColorRGBA_F(var18[0], var18[1], var18[2], 0.0F);
+ 
+-				for(int var20 = 0; var20 <= var19; ++var20) {
++				for(var20 = 0; var20 <= var19; ++var20) {
+ 					var14 = (float)var20 * (float)Math.PI * 2.0F / (float)var19;
+ 					float var15 = MathHelper.sin(var14);
+-					float var16 = MathHelper.cos(var14);
++					var16 = MathHelper.cos(var14);
+ 					var17.addVertex((double)(var15 * 120.0F), (double)(var16 * 120.0F), (double)(-var16 * 40.0F * var18[3]));
+ 				}
+ 
+@@ -690,12 +692,19 @@
+ 			var17.addVertexWithUV((double)(-var11), 100.0D, (double)var11, 0.0D, 1.0D);
+ 			var17.draw();
+ 			var11 = 20.0F;
+-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.renderEngine.getTexture("/terrain/moon.png"));
++			GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.renderEngine.getTexture("/terrain/moon_phases.png"));
++			var20 = this.worldObj.func_40475_d(var1);
++			int var26 = var20 % 4;
++			int var27 = var20 / 4 % 2;
++			var16 = (float)(var26 + 0) / 4.0F;
++			float var21 = (float)(var27 + 0) / 2.0F;
++			float var22 = (float)(var26 + 1) / 4.0F;
++			float var23 = (float)(var27 + 1) / 2.0F;
+ 			var17.startDrawingQuads();
+-			var17.addVertexWithUV((double)(-var11), -100.0D, (double)var11, 1.0D, 1.0D);
+-			var17.addVertexWithUV((double)var11, -100.0D, (double)var11, 0.0D, 1.0D);
+-			var17.addVertexWithUV((double)var11, -100.0D, (double)(-var11), 0.0D, 0.0D);
+-			var17.addVertexWithUV((double)(-var11), -100.0D, (double)(-var11), 1.0D, 0.0D);
++			var17.addVertexWithUV((double)(-var11), -100.0D, (double)var11, (double)var22, (double)var23);
++			var17.addVertexWithUV((double)var11, -100.0D, (double)var11, (double)var16, (double)var23);
++			var17.addVertexWithUV((double)var11, -100.0D, (double)(-var11), (double)var16, (double)var21);
++			var17.addVertexWithUV((double)(-var11), -100.0D, (double)(-var11), (double)var22, (double)var21);
+ 			var17.draw();
+ 			GL11.glDisable(GL11.GL_TEXTURE_2D);
+ 			var12 = this.worldObj.getStarBrightness(var1) * var7;

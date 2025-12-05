@@ -1,0 +1,382 @@
+--- net/minecraft/src/ItemFood.java
++++ net/minecraft/src/ItemFood.java
+@@ -3,6 +3,7 @@
+ public class ItemFood extends Item {
+ 	private int healAmount;
+ 	private boolean isWolfsFavoriteMeat;
++	private boolean field_35431_bw;
+ 
+ 	public ItemFood(int var1, int var2, boolean var3) {
+ 		super(var1);
+@@ -11,9 +12,27 @@
+ 		this.maxStackSize = 1;
+ 	}
+ 
+-	public ItemStack onItemRightClick(ItemStack var1, World var2, EntityPlayer var3) {
++	public ItemStack onFoodEaten(ItemStack var1, World var2, EntityPlayer var3) {
+ 		--var1.stackSize;
+ 		var3.heal(this.healAmount);
++		var2.playSoundAtEntity(var3, "random.burp", 0.5F, var2.rand.nextFloat() * 0.1F + 0.9F);
++
++		return var1;
++	}
++
++	public int getMaxItemUseDuration(ItemStack var1) {
++		return 32;
++	}
++
++	public EnumAction getItemUseAction(ItemStack var1) {
++		return EnumAction.eat;
++	}
++
++	public ItemStack onItemRightClick(ItemStack var1, World var2, EntityPlayer var3) {
++		if(var3.health < 20) {
++			var3.setItemInUse(var1, this.getMaxItemUseDuration(var1));
++		}
++
+ 		return var1;
+ 	}
+ 
+--- net/minecraft/src/ItemSoup.java
++++ net/minecraft/src/ItemSoup.java
+@@ -5,7 +5,7 @@
+ 		super(var1, var2, false);
+ 	}
+ 
+-	public ItemStack onItemRightClick(ItemStack var1, World var2, EntityPlayer var3) {
++	public ItemStack onFoodEaten(ItemStack var1, World var2, EntityPlayer var3) {
+ 		super.onItemRightClick(var1, var2, var3);
+ 		return new ItemStack(Item.bowlEmpty);
+ 	}
+--- net/minecraft/client/Minecraft.java
++++ net/minecraft/client/Minecraft.java
+@@ -1006,6 +1006,10 @@
+ 														this.clickMouse(1);
+ 														this.mouseTicksRan = this.ticksRan;
+ 													}
++
++													if(!Mouse.isButtonDown(1)) {
++														this.playerController.onStoppedUsingItem(this.thePlayer);
++													}
+ 												}
+ 
+ 												this.func_6254_a(0, this.currentScreen == null && Mouse.isButtonDown(0) && this.inGameHasFocus);
+--- /dev/null
++++ net/minecraft/src/EnumAction.java
+@@ -1,0 +1,6 @@
++package net.minecraft.src;
++
++public enum EnumAction {
++	none,
++	eat,
++}
+--- net/minecraft/src/EntityPlayer.java
++++ net/minecraft/src/EntityPlayer.java
+@@ -34,6 +34,8 @@
+ 	protected boolean inPortal = false;
+ 	public float timeInPortal;
+ 	public float prevTimeInPortal;
++	private ItemStack itemInUse;
++	public int itemInUseCount;
+ 	private int damageRemainder = 0;
+ 	public EntityFish fishEntity = null;
+ 
+@@ -56,7 +58,51 @@
+ 		this.dataWatcher.addObject(16, Byte.valueOf((byte)0));
+ 	}
+ 
++	public void stopUsingItem() {
++		if(this.itemInUse != null) {
++			this.itemInUse.onPlayerStoppedUsing(this.worldObj, this, this.itemInUseCount);
++		}
++
++		this.clearItemInUse();
++	}
++
++	public void clearItemInUse() {
++		this.itemInUse = null;
++		this.itemInUseCount = 0;
++		if(!this.worldObj.multiplayerWorld) {
++			this.setEating(false);
++		}
++
++	}
++
+ 	public void onUpdate() {
++		if(this.itemInUse != null) {
++			ItemStack var1 = this.inventory.getCurrentItem();
++			if(var1 != this.itemInUse) {
++				this.clearItemInUse();
++			} else {
++				if(this.itemInUseCount <= 25 && this.itemInUseCount % 4 == 0) {
++					this.func_35201_a(var1, 5);
++				}
++
++				if(--this.itemInUseCount == 0 && !this.worldObj.multiplayerWorld) {
++					if(this.itemInUse != null) {
++						this.func_35201_a(this.itemInUse, 16);
++						int var2 = this.itemInUse.stackSize;
++						ItemStack var3 = this.itemInUse.onFoodEaten(this.worldObj, this);
++						if(var3 != this.itemInUse || var3 != null && var3.stackSize != var2) {
++							this.inventory.mainInventory[this.inventory.currentItem] = var3;
++							if(var3.stackSize == 0) {
++								this.inventory.mainInventory[this.inventory.currentItem] = null;
++							}
++						}
++
++						this.clearItemInUse();
++					}
++				}
++			}
++		}
++
+ 		if(this.isPlayerSleeping()) {
+ 			++this.sleepTimer;
+ 			if(this.sleepTimer > 100) {
+@@ -124,6 +170,24 @@
+ 
+ 	}
+ 
++	protected void func_35201_a(ItemStack var1, int var2) {
++		if(var1.getItemUseAction() == EnumAction.eat) {
++			for(int var3 = 0; var3 < var2; ++var3) {
++				Vec3D var4 = Vec3D.createVector(((double)this.rand.nextFloat() - 0.5D) * 0.1D, Math.random() * 0.1D + 0.1D, 0.0D);
++				var4.rotateAroundX(-this.rotationPitch * (float)Math.PI / 180.0F);
++				var4.rotateAroundY(-this.rotationYaw * (float)Math.PI / 180.0F);
++				Vec3D var5 = Vec3D.createVector(((double)this.rand.nextFloat() - 0.5D) * 0.3D, (double)(-this.rand.nextFloat()) * 0.6D - 0.3D, 0.6D);
++				var5.rotateAroundX(-this.rotationPitch * (float)Math.PI / 180.0F);
++				var5.rotateAroundY(-this.rotationYaw * (float)Math.PI / 180.0F);
++				var5 = var5.addVector(this.posX, this.posY + (double)this.getEyeHeight(), this.posZ);
++				this.worldObj.spawnParticle("iconcrack_" + var1.getItem().shiftedIndex, var5.xCoord, var5.yCoord, var5.zCoord, var4.xCoord, var4.yCoord + 0.05D, var4.zCoord);
++			}
++
++			this.worldObj.playSoundAtEntity(this, "random.eat", 0.5F + 0.5F * (float)this.rand.nextInt(2), (this.rand.nextFloat() - this.rand.nextFloat()) * 0.2F + 1.0F);
++		}
++
++	}
++
+ 	protected boolean isMovementBlocked() {
+ 		return this.health <= 0 || this.isPlayerSleeping();
+ 	}
+@@ -809,6 +873,17 @@
+ 			this.timeUntilPortal = 10;
+ 		} else {
+ 			this.inPortal = true;
++		}
++	}
++
++	public void setItemInUse(ItemStack var1, int var2) {
++		if(var1 != this.itemInUse) {
++			this.itemInUse = var1;
++			this.itemInUseCount = var2;
++			if(!this.worldObj.multiplayerWorld) {
++				this.setEating(true);
++			}
++
+ 		}
+ 	}
+ }
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1310,6 +1310,12 @@
+ 					this.mc.effectRenderer.addEffect(new EntitySlimeFX(this.worldObj, var2, var4, var6, Item.slimeBall));
+ 				} else if(var1.equals("heart")) {
+ 					this.mc.effectRenderer.addEffect(new EntityHeartFX(this.worldObj, var2, var4, var6, var8, var10, var12));
++				} else {
++					int var24;
++					if(var1.startsWith("iconcrack_")) {
++						var24 = Integer.parseInt(var1.substring(var1.indexOf("_") + 1));
++						this.mc.effectRenderer.addEffect(new EntityBreakingFX(this.worldObj, var2, var4, var6, var8, var10, var12, Item.itemsList[var24]));
++					}
+ 				}
+ 
+ 			}
+--- net/minecraft/src/ItemStack.java
++++ net/minecraft/src/ItemStack.java
+@@ -72,6 +72,10 @@
+ 		return this.getItem().onItemRightClick(this, var1, var2);
+ 	}
+ 
++	public ItemStack onFoodEaten(World var1, EntityPlayer var2) {
++		return this.getItem().onFoodEaten(this, var1, var2);
++	}
++
+ 	public NBTTagCompound writeToNBT(NBTTagCompound var1) {
+ 		var1.setShort("id", (short)this.itemID);
+ 		var1.setByte("Count", (byte)this.stackSize);
+@@ -214,5 +218,17 @@
+ 
+ 	public boolean isStackEqual(ItemStack var1) {
+ 		return this.itemID == var1.itemID && this.stackSize == var1.stackSize && this.itemDamage == var1.itemDamage;
++	}
++
++	public int getMaxItemUseDuration() {
++		return this.getItem().getMaxItemUseDuration(this);
++	}
++
++	public EnumAction getItemUseAction() {
++		return this.getItem().getItemUseAction(this);
++	}
++
++	public void onPlayerStoppedUsing(World var1, EntityPlayer var2, int var3) {
++		this.getItem().onPlayerStoppedUsing(this, var1, var2, var3);
+ 	}
+ }
+--- net/minecraft/src/Entity.java
++++ net/minecraft/src/Entity.java
+@@ -1027,6 +1027,14 @@
+ 		return this.getEntityFlag(1);
+ 	}
+ 
++	public boolean isEating() {
++		return this.getEntityFlag(4);
++	}
++
++	public void setEating(boolean var1) {
++		this.setEntityFlag(4, var1);
++	}
++
+ 	protected boolean getEntityFlag(int var1) {
+ 		return (this.dataWatcher.getWatchableObjectByte(0) & 1 << var1) != 0;
+ 	}
+--- net/minecraft/src/Item.java
++++ net/minecraft/src/Item.java
+@@ -164,6 +164,10 @@
+ 		return var1;
+ 	}
+ 
++	public ItemStack onFoodEaten(ItemStack var1, World var2, EntityPlayer var3) {
++		return var1;
++	}
++
+ 	public int getItemStackLimit() {
+ 		return this.maxStackSize;
+ 	}
+@@ -268,6 +272,17 @@
+ 	}
+ 
+ 	public void onCreated(ItemStack var1, World var2, EntityPlayer var3) {
++	}
++
++	public EnumAction getItemUseAction(ItemStack var1) {
++		return EnumAction.none;
++	}
++
++	public int getMaxItemUseDuration(ItemStack var1) {
++		return 0;
++	}
++
++	public void onPlayerStoppedUsing(ItemStack var1, World var2, EntityPlayer var3, int var4) {
+ 	}
+ 
+ 	static {
+--- net/minecraft/src/PlayerController.java
++++ net/minecraft/src/PlayerController.java
+@@ -97,4 +97,8 @@
+ 		var2.craftingInventory.onCraftGuiClosed(var2);
+ 		var2.craftingInventory = var2.inventorySlots;
+ 	}
++
++	public void onStoppedUsingItem(EntityPlayer var1) {
++		var1.stopUsingItem();
++	}
+ }
+--- net/minecraft/src/ItemRenderer.java
++++ net/minecraft/src/ItemRenderer.java
+@@ -152,6 +152,7 @@
+ 		}
+ 
+ 		float var14;
++		float var13;
+ 		if(var5 != null && var5.itemID == Item.mapItem.shiftedIndex) {
+ 			GL11.glPushMatrix();
+ 			var14 = 0.8F;
+@@ -185,7 +186,7 @@
+ 				GL11.glRotatef((float)(-65 * var21), 0.0F, 1.0F, 0.0F);
+ 				Render var11 = RenderManager.instance.getEntityRenderObject(this.mc.thePlayer);
+ 				RenderPlayer var12 = (RenderPlayer)var11;
+-				float var13 = 1.0F;
++				var13 = 1.0F;
+ 				GL11.glScalef(var13, var13, var13);
+ 				var12.drawFirstPersonHand();
+ 				GL11.glPopMatrix();
+@@ -220,10 +221,30 @@
+ 		} else if(var5 != null) {
+ 			GL11.glPushMatrix();
+ 			var14 = 0.8F;
+-			var8 = var3.getSwingProgress(var1);
+-			var9 = MathHelper.sin(var8 * (float)Math.PI);
+-			var10 = MathHelper.sin(MathHelper.sqrt_float(var8) * (float)Math.PI);
+-			GL11.glTranslatef(-var10 * 0.4F, MathHelper.sin(MathHelper.sqrt_float(var8) * (float)Math.PI * 2.0F) * 0.2F, -var9 * 0.2F);
++			float var12;
++			if(var3.itemInUseCount > 0) {
++				EnumAction var17 = var5.getItemUseAction();
++				if(var17 == EnumAction.eat) {
++					var9 = (float)var3.itemInUseCount - var1 + 1.0F;
++					var10 = 1.0F - var9 / (float)var5.getMaxItemUseDuration();
++					var12 = 1.0F - var10;
++					var12 = var12 * var12 * var12;
++					var12 = var12 * var12 * var12;
++					var12 = var12 * var12 * var12;
++					var13 = 1.0F - var12;
++					GL11.glTranslatef(0.0F, MathHelper.abs(MathHelper.cos(var9 / 4.0F * (float)Math.PI) * 0.1F) * (float)((double)var10 > 0.2D ? 1 : 0), 0.0F);
++					GL11.glTranslatef(var13 * 0.6F, -var13 * 0.5F, 0.0F);
++					GL11.glRotatef(var13 * 90.0F, 0.0F, 1.0F, 0.0F);
++					GL11.glRotatef(var13 * 10.0F, 1.0F, 0.0F, 0.0F);
++					GL11.glRotatef(var13 * 30.0F, 0.0F, 0.0F, 1.0F);
++				}
++			} else {
++				var8 = var3.getSwingProgress(var1);
++				var9 = MathHelper.sin(var8 * (float)Math.PI);
++				var10 = MathHelper.sin(MathHelper.sqrt_float(var8) * (float)Math.PI);
++				GL11.glTranslatef(-var10 * 0.4F, MathHelper.sin(MathHelper.sqrt_float(var8) * (float)Math.PI * 2.0F) * 0.2F, -var9 * 0.2F);
++			}
++
+ 			GL11.glTranslatef(0.7F * var14, -0.65F * var14 - (1.0F - var2) * 0.6F, -0.9F * var14);
+ 			GL11.glRotatef(45.0F, 0.0F, 1.0F, 0.0F);
+ 			GL11.glEnable(GL12.GL_RESCALE_NORMAL);
+--- /dev/null
++++ net/minecraft/src/EntityBreakingFX.java
+@@ -1,0 +1,42 @@
++package net.minecraft.src;
++
++public class EntityBreakingFX extends EntityFX {
++	public EntityBreakingFX(World var1, double var2, double var4, double var6, Item var8) {
++		super(var1, var2, var4, var6, 0.0D, 0.0D, 0.0D);
++		this.particleTextureIndex = var8.getIconFromDamage(0);
++		this.particleRed = this.particleGreen = this.particleBlue = 1.0F;
++		this.particleGravity = Block.blockSnow.blockParticleGravity;
++		this.particleScale /= 2.0F;
++	}
++
++	public EntityBreakingFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12, Item var14) {
++		this(var1, var2, var4, var6, var14);
++		this.motionX *= (double)0.1F;
++		this.motionY *= (double)0.1F;
++		this.motionZ *= (double)0.1F;
++		this.motionX += var8;
++		this.motionY += var10;
++		this.motionZ += var12;
++	}
++
++	public int getFXLayer() {
++		return 2;
++	}
++
++	public void renderParticle(Tessellator var1, float var2, float var3, float var4, float var5, float var6, float var7) {
++		float var8 = ((float)(this.particleTextureIndex % 16) + this.particleTextureJitterX / 4.0F) / 16.0F;
++		float var9 = var8 + 0.999F / 64.0F;
++		float var10 = ((float)(this.particleTextureIndex / 16) + this.particleTextureJitterY / 4.0F) / 16.0F;
++		float var11 = var10 + 0.999F / 64.0F;
++		float var12 = 0.1F * this.particleScale;
++		float var13 = (float)(this.prevPosX + (this.posX - this.prevPosX) * (double)var2 - interpPosX);
++		float var14 = (float)(this.prevPosY + (this.posY - this.prevPosY) * (double)var2 - interpPosY);
++		float var15 = (float)(this.prevPosZ + (this.posZ - this.prevPosZ) * (double)var2 - interpPosZ);
++		float var16 = 1.0F;
++		var1.setColorOpaque_F(var16 * this.particleRed, var16 * this.particleGreen, var16 * this.particleBlue);
++		var1.addVertexWithUV((double)(var13 - var3 * var12 - var6 * var12), (double)(var14 - var4 * var12), (double)(var15 - var5 * var12 - var7 * var12), (double)var8, (double)var11);
++		var1.addVertexWithUV((double)(var13 - var3 * var12 + var6 * var12), (double)(var14 + var4 * var12), (double)(var15 - var5 * var12 + var7 * var12), (double)var8, (double)var10);
++		var1.addVertexWithUV((double)(var13 + var3 * var12 + var6 * var12), (double)(var14 + var4 * var12), (double)(var15 + var5 * var12 + var7 * var12), (double)var9, (double)var10);
++		var1.addVertexWithUV((double)(var13 + var3 * var12 - var6 * var12), (double)(var14 - var4 * var12), (double)(var15 + var5 * var12 - var7 * var12), (double)var9, (double)var11);
++	}
++}

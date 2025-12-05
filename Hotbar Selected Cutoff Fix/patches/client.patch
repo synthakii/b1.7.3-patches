@@ -1,0 +1,43 @@
+--- net/minecraft/src/GuiIngame.java
++++ net/minecraft/src/GuiIngame.java
+@@ -50,8 +50,8 @@
+ 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.renderEngine.getTexture("/gui/gui.png"));
+ 		InventoryPlayer var11 = this.mc.thePlayer.inventory;
+ 		this.zLevel = -90.0F;
+-		this.drawTexturedModalRect(var6 / 2 - 91, var7 - 22, 0, 0, 182, 22);
+-		this.drawTexturedModalRect(var6 / 2 - 91 - 1 + var11.currentItem * 20, var7 - 22 - 1, 0, 22, 24, 22);
++		this.drawTexturedModalRect(var6 / 2 - 91, var7 - 23, 0, 0, 182, 22);
++		this.drawTexturedModalRect(var6 / 2 - 91 - 1 + var11.currentItem * 20, var7 - 23 - 1, 0, 22, 24, 24);
+ 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.mc.renderEngine.getTexture("/gui/icons.png"));
+ 		GL11.glEnable(GL11.GL_BLEND);
+ 		GL11.glBlendFunc(GL11.GL_ONE_MINUS_DST_COLOR, GL11.GL_ONE_MINUS_SRC_COLOR);
+@@ -73,7 +73,7 @@
+ 
+ 			int var18;
+ 			for(var16 = 0; var16 < 10; ++var16) {
+-				var17 = var7 - 32;
++				var17 = var7 - 33;
+ 				if(var15 > 0) {
+ 					var18 = var6 / 2 + 91 - var16 * 8 - 9;
+ 					if(var16 * 2 + 1 < var15) {
+@@ -125,9 +125,9 @@
+ 
+ 				for(var18 = 0; var18 < var16 + var17; ++var18) {
+ 					if(var18 < var16) {
+-						this.drawTexturedModalRect(var6 / 2 - 91 + var18 * 8, var7 - 32 - 9, 16, 18, 9, 9);
++						this.drawTexturedModalRect(var6 / 2 - 91 + var18 * 8, var7 - 33 - 9, 16, 18, 9, 9);
+ 					} else {
+-						this.drawTexturedModalRect(var6 / 2 - 91 + var18 * 8, var7 - 32 - 9, 25, 18, 9, 9);
++						this.drawTexturedModalRect(var6 / 2 - 91 + var18 * 8, var7 - 33 - 9, 25, 18, 9, 9);
+ 					}
+ 				}
+ 			}
+@@ -142,7 +142,7 @@
+ 
+ 		for(var15 = 0; var15 < 9; ++var15) {
+ 			var16 = var6 / 2 - 90 + var15 * 20 + 2;
+-			var17 = var7 - 16 - 3;
++			var17 = var7 - 17 - 3;
+ 			this.renderInventorySlot(var15, var16, var17, var1);
+ 		}
+ 

@@ -151,6 +151,28 @@
  			GL11.glTranslatef(0.5F, 0.5F, 0.5F);
  		}
  
+--- net/minecraft/src/EntityDiggingFX.java
++++ net/minecraft/src/EntityDiggingFX.java
+@@ -7,9 +7,17 @@
+ 	public EntityDiggingFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12, Block var14, int var15, int var16) {
+ 		super(var1, var2, var4, var6, var8, var10, var12);
+ 		this.field_4082_a = var14;
+-		this.particleTextureIndex = var14.getBlockTextureFromSideAndMetadata(0, var16);
++		this.particleTextureIndex = var14.getBlockTextureFromSideAndMetadata(var15, var16);
+ 		this.particleGravity = var14.blockParticleGravity;
+-		this.particleRed = this.particleGreen = this.particleBlue = 0.6F;
++		if(var14 == Block.grass && this.particleTextureIndex == 0) {
++			var1.getWorldChunkManager().func_4069_a(MathHelper.floor_double(var2), MathHelper.floor_double(var6), 1, 1);
++			int var17 = ColorizerGrass.getGrassColor(var1.getWorldChunkManager().temperature[0], var1.getWorldChunkManager().humidity[0]);
++			this.particleRed = (float)(var17 >> 16 & 255) / 255.0F;
++			this.particleGreen = (float)(var17 >> 8 & 255) / 255.0F;
++			this.particleBlue = (float)(var17 & 255) / 255.0F;
++		} else {
++			this.particleRed = this.particleGreen = this.particleBlue = 0.6F;
++		}
+ 		this.particleScale /= 2.0F;
+ 		this.field_32001_o = var15;
+ 	}
 --- net/minecraft/src/BlockGrass.java
 +++ net/minecraft/src/BlockGrass.java
 @@ -9,6 +9,10 @@

@@ -1,0 +1,128 @@
+--- net/minecraft/src/EntityRenderer.java
++++ net/minecraft/src/EntityRenderer.java
+@@ -203,7 +203,7 @@
+ 				GL11.glRotatef(var2.prevRotationYaw + (var2.rotationYaw - var2.prevRotationYaw) * var1 + 180.0F, 0.0F, -1.0F, 0.0F);
+ 				GL11.glRotatef(var2.prevRotationPitch + (var2.rotationPitch - var2.prevRotationPitch) * var1, -1.0F, 0.0F, 0.0F);
+ 			}
+-		} else if(this.mc.gameSettings.thirdPersonView) {
++		} else if(this.mc.gameSettings.thirdPersonView > 0) {
+ 			double var27 = (double)(this.field_22227_s + (this.field_22228_r - this.field_22227_s) * var1);
+ 			float var13;
+ 			float var28;
+@@ -216,6 +216,10 @@
+ 			} else {
+ 				var28 = var2.rotationYaw;
+ 				var13 = var2.rotationPitch;
++				if(this.mc.gameSettings.thirdPersonView == 2) {
++					var13 += 180.0F;
++				}
++
+ 				double var14 = (double)(-MathHelper.sin(var28 / 180.0F * (float)Math.PI) * MathHelper.cos(var13 / 180.0F * (float)Math.PI)) * var27;
+ 				double var16 = (double)(MathHelper.cos(var28 / 180.0F * (float)Math.PI) * MathHelper.cos(var13 / 180.0F * (float)Math.PI)) * var27;
+ 				double var18 = (double)(-MathHelper.sin(var13 / 180.0F * (float)Math.PI)) * var27;
+@@ -236,6 +240,10 @@
+ 					}
+ 				}
+ 
++				if(this.mc.gameSettings.thirdPersonView == 2) {
++					GL11.glRotatef(180.0F, 0.0F, 1.0F, 0.0F);
++				}
++
+ 				GL11.glRotatef(var2.rotationPitch - var13, 1.0F, 0.0F, 0.0F);
+ 				GL11.glRotatef(var2.rotationYaw - var28, 0.0F, 1.0F, 0.0F);
+ 				GL11.glTranslatef(0.0F, 0.0F, (float)(-var27));
+@@ -310,12 +318,12 @@
+ 			this.setupViewBobbing(var1);
+ 		}
+ 
+-		if(!this.mc.gameSettings.thirdPersonView && !this.mc.renderViewEntity.isPlayerSleeping() && !this.mc.gameSettings.hideGUI) {
++		if(this.mc.gameSettings.thirdPersonView == 0 && !this.mc.renderViewEntity.isPlayerSleeping() && !this.mc.gameSettings.hideGUI) {
+ 			this.itemRenderer.renderItemInFirstPerson(var1);
+ 		}
+ 
+ 		GL11.glPopMatrix();
+-		if(!this.mc.gameSettings.thirdPersonView && !this.mc.renderViewEntity.isPlayerSleeping()) {
++		if(this.mc.gameSettings.thirdPersonView == 0 && !this.mc.renderViewEntity.isPlayerSleeping()) {
+ 			this.itemRenderer.renderOverlays(var1);
+ 			this.hurtCameraEffect(var1);
+ 		}
+--- net/minecraft/src/RenderManager.java
++++ net/minecraft/src/RenderManager.java
+@@ -94,6 +94,10 @@
+ 			this.playerViewX = var4.prevRotationPitch + (var4.rotationPitch - var4.prevRotationPitch) * var6;
+ 		}
+ 
++		if(var5.thirdPersonView == 2) {
++			this.playerViewY += 180.0F;
++		}
++
+ 		this.field_1222_l = var4.lastTickPosX + (var4.posX - var4.lastTickPosX) * (double)var6;
+ 		this.field_1221_m = var4.lastTickPosY + (var4.posY - var4.lastTickPosY) * (double)var6;
+ 		this.field_1220_n = var4.lastTickPosZ + (var4.posZ - var4.lastTickPosZ) * (double)var6;
+--- net/minecraft/src/GuiIngame.java
++++ net/minecraft/src/GuiIngame.java
+@@ -37,7 +37,7 @@
+ 		}
+ 
+ 		ItemStack var9 = this.mc.thePlayer.inventory.armorItemInSlot(3);
+-		if(!this.mc.gameSettings.thirdPersonView && var9 != null && var9.itemID == Block.pumpkin.blockID) {
++		if(this.mc.gameSettings.thirdPersonView == 0 && var9 != null && var9.itemID == Block.pumpkin.blockID) {
+ 			this.renderPumpkinBlur(var6, var7);
+ 		}
+ 
+--- net/minecraft/client/Minecraft.java
++++ net/minecraft/client/Minecraft.java
+@@ -546,7 +546,7 @@
+ 					}
+ 
+ 					if(this.thePlayer != null && this.thePlayer.isEntityInsideOpaqueBlock()) {
+-						this.gameSettings.thirdPersonView = false;
++						this.gameSettings.thirdPersonView = 0;
+ 					}
+ 
+ 					if(!this.skipRenderWorld) {
+@@ -1038,7 +1038,10 @@
+ 												}
+ 
+ 												if(Keyboard.getEventKey() == Keyboard.KEY_F5) {
+-													this.gameSettings.thirdPersonView = !this.gameSettings.thirdPersonView;
++													++this.gameSettings.thirdPersonView;
++													if(this.gameSettings.thirdPersonView > 2) {
++														this.gameSettings.thirdPersonView = 0;
++													}
+ 												}
+ 
+ 												if(Keyboard.getEventKey() == Keyboard.KEY_F8) {
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -283,7 +283,7 @@
+ 
+ 			for(var6 = 0; var6 < var5.size(); ++var6) {
+ 				var7 = (Entity)var5.get(var6);
+-				if(var7.isInRangeToRenderVec3D(var1) && (var7.ignoreFrustumCheck || var2.isBoundingBoxInFrustum(var7.boundingBox)) && (var7 != this.mc.renderViewEntity || this.mc.gameSettings.thirdPersonView || this.mc.renderViewEntity.isPlayerSleeping())) {
++				if(var7.isInRangeToRenderVec3D(var1) && (var7.ignoreFrustumCheck || var2.isBoundingBoxInFrustum(var7.boundingBox)) && (var7 != this.mc.renderViewEntity || this.mc.gameSettings.thirdPersonView != 0 || this.mc.renderViewEntity.isPlayerSleeping())) {
+ 					int var8 = MathHelper.floor_double(var7.posY);
+ 					if(var8 < 0) {
+ 						var8 = 0;
+--- net/minecraft/src/RenderFish.java
++++ net/minecraft/src/RenderFish.java
+@@ -45,7 +45,7 @@
+ 			double var28 = var1.angler.prevPosX + (var1.angler.posX - var1.angler.prevPosX) * (double)var9 + var27.xCoord;
+ 			double var30 = var1.angler.prevPosY + (var1.angler.posY - var1.angler.prevPosY) * (double)var9 + var27.yCoord;
+ 			double var32 = var1.angler.prevPosZ + (var1.angler.posZ - var1.angler.prevPosZ) * (double)var9 + var27.zCoord;
+-			if(this.renderManager.options.thirdPersonView) {
++			if(this.renderManager.options.thirdPersonView > 0) {
+ 				var20 = (var1.angler.prevRenderYawOffset + (var1.angler.renderYawOffset - var1.angler.prevRenderYawOffset) * var9) * (float)Math.PI / 180.0F;
+ 				var21 = (double)MathHelper.sin(var20);
+ 				var23 = (double)MathHelper.cos(var20);
+--- net/minecraft/src/GameSettings.java
++++ net/minecraft/src/GameSettings.java
+@@ -40,7 +40,7 @@
+ 	private File optionsFile;
+ 	public int difficulty = 2;
+ 	public boolean hideGUI = false;
+-	public boolean thirdPersonView = false;
++	public int thirdPersonView = 0;
+ 	public boolean showDebugInfo = false;
+ 	public String lastServer = "";
+ 	public boolean field_22275_C = false;

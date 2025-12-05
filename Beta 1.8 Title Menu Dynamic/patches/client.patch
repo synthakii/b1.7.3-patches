@@ -1,0 +1,331 @@
+--- net/minecraft/src/World.java
++++ net/minecraft/src/World.java
+@@ -2163,6 +2163,9 @@
+ 	}
+ 
+ 	public EntityPlayer getClosestPlayer(double var1, double var3, double var5, double var7) {
++		if(this.isTitle()) {
++			return null;
++		}
+ 		double var9 = -1.0D;
+ 		EntityPlayer var11 = null;
+ 
+@@ -2449,5 +2452,9 @@
+ 			((IWorldAccess)this.worldAccesses.get(var7)).func_28136_a(var1, var2, var3, var4, var5, var6);
+ 		}
+ 
++	}
++
++	public boolean isTitle() {
++		return false;
+ 	}
+ }
+--- net/minecraft/src/EntityRenderer.java
++++ net/minecraft/src/EntityRenderer.java
+@@ -51,6 +51,7 @@
+ 	float fogColorBlue;
+ 	private float fogColor2;
+ 	private float fogColor1;
++	public float panoramaTimer;
+ 
+ 	public EntityRenderer(Minecraft var1) {
+ 		this.mc = var1;
+@@ -295,6 +296,11 @@
+ 			GL11.glRotatef(-((float)this.rendererUpdateCount + var1) * 20.0F, 0.0F, 1.0F, 1.0F);
+ 		}
+ 
++		if(this.mc.theWorld.isTitle() && this.mc.thePlayer != null) {
++			this.mc.thePlayer.rotationPitch = MathHelper.sin(this.panoramaTimer / 400.0F) * 25.0F + 20.0F;
++			this.mc.thePlayer.rotationYaw = this.panoramaTimer * 0.1F + 0.0F;
++		}
++
+ 		this.orientCamera(var1);
+ 	}
+ 
+@@ -310,7 +316,7 @@
+ 			this.setupViewBobbing(var1);
+ 		}
+ 
+-		if(!this.mc.gameSettings.thirdPersonView && !this.mc.renderViewEntity.isPlayerSleeping() && !this.mc.gameSettings.hideGUI) {
++		if(!this.mc.gameSettings.thirdPersonView && !this.mc.renderViewEntity.isPlayerSleeping() && !this.mc.gameSettings.hideGUI && !this.mc.theWorld.isTitle()) {
+ 			this.itemRenderer.renderItemInFirstPerson(var1);
+ 		}
+ 
+@@ -508,7 +514,9 @@
+ 				var21 = (EntityPlayer)var4;
+ 				GL11.glDisable(GL11.GL_ALPHA_TEST);
+ 				var5.drawBlockBreaking(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
+-				var5.drawSelectionBox(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
++				if(!this.mc.theWorld.isTitle()) {
++					var5.drawSelectionBox(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
++				}
+ 				GL11.glEnable(GL11.GL_ALPHA_TEST);
+ 			}
+ 
+@@ -550,7 +558,9 @@
+ 				var21 = (EntityPlayer)var4;
+ 				GL11.glDisable(GL11.GL_ALPHA_TEST);
+ 				var5.drawBlockBreaking(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
+-				var5.drawSelectionBox(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
++				if(!this.mc.theWorld.isTitle()) {
++					var5.drawSelectionBox(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
++				}
+ 				GL11.glEnable(GL11.GL_ALPHA_TEST);
+ 			}
+ 
+--- net/minecraft/src/GuiMainMenu.java
++++ net/minecraft/src/GuiMainMenu.java
+@@ -74,6 +74,18 @@
+ 			this.multiplayerButton.enabled = false;
+ 		}
+ 
++		if(this.mc.theWorld == null || !this.mc.theWorld.isTitle()) {
++			this.mc.playerController = new PlayerControllerTest(this.mc);
++			LoadingScreenRenderer loadingScreen = this.mc.loadingScreen;
++			this.mc.loadingScreen = null;
++			this.mc.startTitleWorld("TitleWorld", "Title", 2151901553968352745L);
++			this.mc.loadingScreen = loadingScreen;
++		}
++
++		/*if(this.mc.theWorld != null) {
++			this.mc.theWorld.titleSpeed = this.options.simulationSpeed;
++			this.mc.theWorld.titleLighten = this.options.lighten;
++		}*/
+ 	}
+ 
+ 	protected void actionPerformed(GuiButton var1) {
+@@ -100,7 +112,12 @@
+ 	}
+ 
+ 	public void drawScreen(int var1, int var2, float var3) {
+-		this.drawDefaultBackground();
++		if(this.mc.entityRenderer != null) {
++			this.mc.entityRenderer.panoramaTimer = this.updateCounter + 1.0F * var3;
++			this.drawGradientRect(0, 0, this.width, this.height, -2130706433, 0xFFFFFF);
++			this.drawGradientRect(0, 0, this.width, this.height, 0, Integer.MIN_VALUE);
++		}
++
+ 		Tessellator var4 = Tessellator.instance;
+ 		short var5 = 274;
+ 		int var6 = this.width / 2 - var5 / 2;
+@@ -118,7 +135,7 @@
+ 		GL11.glScalef(var8, var8, var8);
+ 		this.drawCenteredString(this.fontRenderer, this.splashText, 0, -8, 16776960);
+ 		GL11.glPopMatrix();
+-		this.drawString(this.fontRenderer, "Minecraft Beta 1.7.3", 2, 2, 5263440);
++		this.drawString(this.fontRenderer, "Minecraft Beta 1.7.3", 2, this.height - 10, 16777215);
+ 		String var9 = "Copyright Mojang AB. Do not distribute.";
+ 		this.drawString(this.fontRenderer, var9, this.width - this.fontRenderer.getStringWidth(var9) - 2, this.height - 10, 16777215);
+ 		super.drawScreen(var1, var2, var3);
+--- net/minecraft/src/GuiIngame.java
++++ net/minecraft/src/GuiIngame.java
+@@ -32,6 +32,10 @@
+ 		FontRenderer var8 = this.mc.fontRenderer;
+ 		this.mc.entityRenderer.func_905_b();
+ 		GL11.glEnable(GL11.GL_BLEND);
++		if(this.mc.theWorld.isTitle()) {
++			return;
++		}
++		
+ 		if(Minecraft.isFancyGraphicsEnabled()) {
+ 			this.renderVignette(this.mc.thePlayer.getEntityBrightness(var1), var6, var7);
+ 		}
+--- /dev/null
++++ net/minecraft/src/WorldTitle.java
+@@ -1,0 +1,11 @@
++package net.minecraft.src;
++
++public class WorldTitle extends World {
++	public WorldTitle(ISaveHandler var1, String var2, long var3) {
++		super(var1, var2, var3);
++	}
++
++	public boolean isTitle() {
++		return !this.multiplayerWorld;
++	}
++}
+--- net/minecraft/client/Minecraft.java
++++ net/minecraft/client/Minecraft.java
+@@ -13,6 +13,7 @@
+ import net.minecraft.src.Block;
+ import net.minecraft.src.ChunkCoordinates;
+ import net.minecraft.src.ChunkProviderLoadOrGenerate;
++import net.minecraft.src.IProgressUpdate;
+ import net.minecraft.src.ColorizerFoliage;
+ import net.minecraft.src.ColorizerGrass;
+ import net.minecraft.src.ColorizerWater;
+@@ -66,6 +67,7 @@
+ import net.minecraft.src.RenderGlobal;
+ import net.minecraft.src.RenderManager;
+ import net.minecraft.src.SaveConverterMcRegion;
++import net.minecraft.src.SaveOldDir;
+ import net.minecraft.src.ScaledResolution;
+ import net.minecraft.src.ScreenShotHelper;
+ import net.minecraft.src.Session;
+@@ -93,6 +95,7 @@
+ import net.minecraft.src.World;
+ import net.minecraft.src.WorldProvider;
+ import net.minecraft.src.WorldRenderer;
++import net.minecraft.src.WorldTitle;
+ import org.lwjgl.LWJGLException;
+ import org.lwjgl.input.Controllers;
+ import org.lwjgl.input.Keyboard;
+@@ -406,7 +409,7 @@
+ 			}
+ 
+ 			this.statFileWriter.syncStats();
+-			if(var1 == null && this.theWorld == null) {
++			if(var1 == null && (this.theWorld == null || this.theWorld.isTitle())) {
+ 				var1 = new GuiMainMenu();
+ 			} else if(var1 == null && this.thePlayer.health <= 0) {
+ 				var1 = new GuiGameOver();
+@@ -595,7 +598,7 @@
+ 					this.checkGLError("Post render");
+ 					++var3;
+ 
+-					for(this.isGamePaused = !this.isMultiplayerWorld() && this.currentScreen != null && this.currentScreen.doesGuiPauseGame(); System.currentTimeMillis() >= var1 + 1000L; var3 = 0) {
++					for(this.isGamePaused = (this.theWorld == null || !this.isMultiplayerWorld() && !this.theWorld.isTitle()) && this.currentScreen != null && this.currentScreen.doesGuiPauseGame(); System.currentTimeMillis() >= var1 + 1000L; var3 = 0) {
+ 						this.debug = var3 + " fps, " + WorldRenderer.chunksUpdated + " chunk updates";
+ 						WorldRenderer.chunksUpdated = 0;
+ 						var1 += 1000L;
+@@ -1175,6 +1178,23 @@
+ 		return this.theWorld != null && this.theWorld.multiplayerWorld;
+ 	}
+ 
++	public void startTitleWorld(String var1, String var2, long var3) {
++		this.changeWorld1((World)null);
++		System.gc();
++		if(this.saveLoader.isOldMapFormat(var1)) {
++			this.convertMapFormat(var1, var2);
++		} else {
++			World var4 = null;
++			var4 = new WorldTitle(new SaveOldDir(this.mcDataDir, var1, false), var2, var3);
++			if(var4.isNewWorld) {
++				this.changeWorld2(var4, "Generating level");
++			} else {
++				this.changeWorld2(var4, "Loading level");
++			}
++		}
++
++	}
++
+ 	public void startWorld(String var1, String var2, long var3) {
+ 		this.changeWorld1((World)null);
+ 		System.gc();
+@@ -1256,17 +1276,26 @@
+ 		this.statFileWriter.func_27175_b();
+ 		this.statFileWriter.syncStats();
+ 		this.renderViewEntity = null;
+-		this.loadingScreen.printText(var2);
+-		this.loadingScreen.displayLoadingString("");
++		if(this.loadingScreen != null) {
++			this.loadingScreen.printText(var2);
++			this.loadingScreen.displayLoadingString("");
++		}
++
+ 		this.sndManager.playStreaming((String)null, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+ 		if(this.theWorld != null) {
+-			this.theWorld.saveWorldIndirectly(this.loadingScreen);
++			if(this.theWorld.isTitle()) {
++				this.theWorld.saveWorldIndirectly((IProgressUpdate)null);
++			} else {
++				this.theWorld.saveWorldIndirectly(this.loadingScreen);
++			}
+ 		}
+ 
+ 		this.theWorld = var1;
+ 		if(var1 != null) {
+-			this.playerController.func_717_a(var1);
+-			if(!this.isMultiplayerWorld()) {
++			if(var1.isTitle()) {
++				this.thePlayer = new EntityPlayerSP(this, var1, this.session, var1.worldProvider.worldType);
++				this.thePlayer.setLocationAndAngles(61.48D, 75.0D, -68.73D, 0.0F, 20.0F);
++			} else if(!this.isMultiplayerWorld()) {
+ 				if(var3 == null) {
+ 					this.thePlayer = (EntityPlayerSP)var1.func_4085_a(EntityPlayerSP.class);
+ 				}
+@@ -1281,6 +1310,7 @@
+ 				this.func_6255_d(var2);
+ 			}
+ 
++			this.playerController.func_717_a(var1);
+ 			if(this.thePlayer == null) {
+ 				this.thePlayer = (EntityPlayerSP)this.playerController.createPlayer(var1);
+ 				this.thePlayer.preparePlayerToSpawn();
+@@ -1331,8 +1361,10 @@
+ 	}
+ 
+ 	private void func_6255_d(String var1) {
+-		this.loadingScreen.printText(var1);
+-		this.loadingScreen.displayLoadingString("Building terrain");
++		if(this.loadingScreen != null) {
++			this.loadingScreen.printText(var1);
++			this.loadingScreen.displayLoadingString("Building terrain");
++		}
+ 		short var2 = 128;
+ 		int var3 = 0;
+ 		int var4 = var2 * 2 / 16 + 1;
+@@ -1351,7 +1383,9 @@
+ 
+ 		for(int var10 = -var2; var10 <= var2; var10 += 16) {
+ 			for(int var8 = -var2; var8 <= var2; var8 += 16) {
+-				this.loadingScreen.setLoadingProgress(var3++ * 100 / var4);
++				if(this.loadingScreen != null) {
++					this.loadingScreen.setLoadingProgress(var3++ * 100 / var4);
++				}
+ 				this.theWorld.getBlockId(var6.x + var10, 64, var6.z + var8);
+ 
+ 				while(this.theWorld.updatingLighting()) {
+@@ -1359,7 +1393,9 @@
+ 			}
+ 		}
+ 
+-		this.loadingScreen.displayLoadingString("Simulating world for a bit");
++		if(this.loadingScreen != null) {
++			this.loadingScreen.displayLoadingString("Simulating world for a bit");
++		}
+ 		boolean var9 = true;
+ 		this.theWorld.func_656_j();
+ 	}
+--- net/minecraft/src/EntityPlayerSP.java
++++ net/minecraft/src/EntityPlayerSP.java
+@@ -21,7 +21,18 @@
+ 	}
+ 
+ 	public void moveEntity(double var1, double var3, double var5) {
+-		super.moveEntity(var1, var3, var5);
++		if(this == this.mc.thePlayer && this.worldObj.isTitle()) {
++			this.noClip = true;
++			float var7 = this.distanceWalkedModified;
++			this.fallDistance = 0.0F;
++			this.motionY = 0.0D;
++			super.moveEntity(var1, 0.0D, var5);
++			this.onGround = true;
++			this.distanceWalkedModified = var7;
++		} else {
++			this.noClip = false;
++			super.moveEntity(var1, var3, var5);
++		}
+ 	}
+ 
+ 	public void updatePlayerActionState() {
+@@ -32,7 +43,7 @@
+ 	}
+ 
+ 	public void onLivingUpdate() {
+-		if(!this.mc.statFileWriter.hasAchievementUnlocked(AchievementList.openInventory)) {
++		if(!this.mc.statFileWriter.hasAchievementUnlocked(AchievementList.openInventory) && !this.worldObj.isTitle()) {
+ 			this.mc.guiAchievement.queueAchievementInformation(AchievementList.openInventory);
+ 		}
+ 
+--- net/minecraft/src/GuiScreen.java
++++ net/minecraft/src/GuiScreen.java
+@@ -136,7 +136,7 @@
+ 	}
+ 
+ 	public void drawWorldBackground(int var1) {
+-		if(this.mc.theWorld != null) {
++		if(this.mc.theWorld != null && !this.mc.theWorld.isTitle()) {
+ 			this.drawGradientRect(0, 0, this.width, this.height, -1072689136, -804253680);
+ 		} else {
+ 			this.drawBackground(var1);

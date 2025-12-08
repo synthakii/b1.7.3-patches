@@ -1,6 +1,6 @@
 --- net/minecraft/src/World.java
 +++ net/minecraft/src/World.java
-@@ -2163,6 +2163,9 @@
+@@ -2164,6 +2164,9 @@
  	}
  
  	public EntityPlayer getClosestPlayer(double var1, double var3, double var5, double var7) {
@@ -10,7 +10,7 @@
  		double var9 = -1.0D;
  		EntityPlayer var11 = null;
  
-@@ -2449,5 +2452,9 @@
+@@ -2450,5 +2453,9 @@
  			((IWorldAccess)this.worldAccesses.get(var7)).func_28136_a(var1, var2, var3, var4, var5, var6);
  		}
  
@@ -30,7 +30,18 @@
  
  	public EntityRenderer(Minecraft var1) {
  		this.mc = var1;
-@@ -295,6 +296,11 @@
+@@ -146,6 +147,10 @@
+ 			var3 /= (1.0F - 500.0F / (var4 + 500.0F)) * 2.0F + 1.0F;
+ 		}
+ 
++		if(this.mc.theWorld.isTitle()) {
++			var3 = 90.0F;
++		}
++
+ 		return var3 + this.field_22221_y + (this.field_22222_x - this.field_22221_y) * var1;
+ 	}
+ 
+@@ -295,6 +300,11 @@
  			GL11.glRotatef(-((float)this.rendererUpdateCount + var1) * 20.0F, 0.0F, 1.0F, 1.0F);
  		}
  
@@ -42,7 +53,7 @@
  		this.orientCamera(var1);
  	}
  
-@@ -310,7 +316,7 @@
+@@ -310,7 +320,7 @@
  			this.setupViewBobbing(var1);
  		}
  
@@ -51,7 +62,7 @@
  			this.itemRenderer.renderItemInFirstPerson(var1);
  		}
  
-@@ -508,7 +514,9 @@
+@@ -508,7 +518,9 @@
  				var21 = (EntityPlayer)var4;
  				GL11.glDisable(GL11.GL_ALPHA_TEST);
  				var5.drawBlockBreaking(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
@@ -62,7 +73,7 @@
  				GL11.glEnable(GL11.GL_ALPHA_TEST);
  			}
  
-@@ -550,7 +558,9 @@
+@@ -550,7 +562,9 @@
  				var21 = (EntityPlayer)var4;
  				GL11.glDisable(GL11.GL_ALPHA_TEST);
  				var5.drawBlockBreaking(var21, this.mc.objectMouseOver, 0, var21.inventory.getCurrentItem(), var1);
@@ -75,7 +86,7 @@
  
 --- net/minecraft/src/GuiMainMenu.java
 +++ net/minecraft/src/GuiMainMenu.java
-@@ -74,6 +74,18 @@
+@@ -74,6 +74,14 @@
  			this.multiplayerButton.enabled = false;
  		}
  
@@ -83,18 +94,14 @@
 +			this.mc.playerController = new PlayerControllerTest(this.mc);
 +			LoadingScreenRenderer loadingScreen = this.mc.loadingScreen;
 +			this.mc.loadingScreen = null;
-+			this.mc.startTitleWorld("TitleWorld", "Title", 2151901553968352745L);
++			this.mc.startTitleWorld("panorama", "Title", 2151901553968352745L);
 +			this.mc.loadingScreen = loadingScreen;
++			this.mc.sndManager.playTitleMusicIfReady();
 +		}
-+
-+		/*if(this.mc.theWorld != null) {
-+			this.mc.theWorld.titleSpeed = this.options.simulationSpeed;
-+			this.mc.theWorld.titleLighten = this.options.lighten;
-+		}*/
  	}
  
  	protected void actionPerformed(GuiButton var1) {
-@@ -100,7 +112,12 @@
+@@ -100,7 +108,12 @@
  	}
  
  	public void drawScreen(int var1, int var2, float var3) {
@@ -108,7 +115,7 @@
  		Tessellator var4 = Tessellator.instance;
  		short var5 = 274;
  		int var6 = this.width / 2 - var5 / 2;
-@@ -118,7 +135,7 @@
+@@ -118,7 +131,7 @@
  		GL11.glScalef(var8, var8, var8);
  		this.drawCenteredString(this.fontRenderer, this.splashText, 0, -8, 16776960);
  		GL11.glPopMatrix();
@@ -129,6 +136,20 @@
 +		
  		if(Minecraft.isFancyGraphicsEnabled()) {
  			this.renderVignette(this.mc.thePlayer.getEntityBrightness(var1), var6, var7);
+ 		}
+--- net/minecraft/src/WorldProvider.java
++++ net/minecraft/src/WorldProvider.java
+@@ -40,8 +40,9 @@
+ 	}
+ 
+ 	public float calculateCelestialAngle(long var1, float var3) {
+-		int var4 = (int)(var1 % 24000L);
+-		float var5 = ((float)var4 + var3) / 24000.0F - 0.25F;
++		float var7 = this.worldObj.isTitle() ? 24000L / 10.0F : 24000L;
++		int var4 = (int)(var1 % (long)var7);
++		float var5 = ((float)var4 + var3) / var7 - 0.25F;
+ 		if(var5 < 0.0F) {
+ 			++var5;
  		}
 --- /dev/null
 +++ net/minecraft/src/WorldTitle.java
@@ -212,7 +233,15 @@
  	public void startWorld(String var1, String var2, long var3) {
  		this.changeWorld1((World)null);
  		System.gc();
-@@ -1256,17 +1276,26 @@
+@@ -1193,6 +1213,7 @@
+ 				this.statFileWriter.readStat(StatList.startGameStat, 1);
+ 				this.changeWorld2(var6, "Loading level");
+ 			}
++			this.sndManager.stopStreaming();
+ 		}
+ 
+ 	}
+@@ -1256,17 +1277,26 @@
  		this.statFileWriter.func_27175_b();
  		this.statFileWriter.syncStats();
  		this.renderViewEntity = null;
@@ -239,12 +268,12 @@
 -			if(!this.isMultiplayerWorld()) {
 +			if(var1.isTitle()) {
 +				this.thePlayer = new EntityPlayerSP(this, var1, this.session, var1.worldProvider.worldType);
-+				this.thePlayer.setLocationAndAngles(61.48D, 75.0D, -68.73D, 0.0F, 20.0F);
++				this.thePlayer.setLocationAndAngles(61.48D, 75.0D, -68.73D, 0.0F, 0.0F);
 +			} else if(!this.isMultiplayerWorld()) {
  				if(var3 == null) {
  					this.thePlayer = (EntityPlayerSP)var1.func_4085_a(EntityPlayerSP.class);
  				}
-@@ -1281,6 +1310,7 @@
+@@ -1281,6 +1311,7 @@
  				this.func_6255_d(var2);
  			}
  
@@ -252,7 +281,7 @@
  			if(this.thePlayer == null) {
  				this.thePlayer = (EntityPlayerSP)this.playerController.createPlayer(var1);
  				this.thePlayer.preparePlayerToSpawn();
-@@ -1331,8 +1361,10 @@
+@@ -1331,8 +1362,10 @@
  	}
  
  	private void func_6255_d(String var1) {
@@ -265,7 +294,7 @@
  		short var2 = 128;
  		int var3 = 0;
  		int var4 = var2 * 2 / 16 + 1;
-@@ -1351,7 +1383,9 @@
+@@ -1351,7 +1384,9 @@
  
  		for(int var10 = -var2; var10 <= var2; var10 += 16) {
  			for(int var8 = -var2; var8 <= var2; var8 += 16) {
@@ -276,7 +305,7 @@
  				this.theWorld.getBlockId(var6.x + var10, 64, var6.z + var8);
  
  				while(this.theWorld.updatingLighting()) {
-@@ -1359,7 +1393,9 @@
+@@ -1359,7 +1394,9 @@
  			}
  		}
  
@@ -287,9 +316,26 @@
  		boolean var9 = true;
  		this.theWorld.func_656_j();
  	}
+@@ -1376,8 +1413,16 @@
+ 			this.sndManager.addStreaming(var1, var2);
+ 		} else if(var4.equalsIgnoreCase("music")) {
+ 			this.sndManager.addMusic(var1, var2);
++
++			if(var1.startsWith("title/")) {
++				this.sndManager.addTitleMusic(var1, var2);
++			}
+ 		} else if(var4.equalsIgnoreCase("newmusic")) {
+ 			this.sndManager.addMusic(var1, var2);
++
++			if(var1.startsWith("title/")) {
++				this.sndManager.addTitleMusic(var1, var2);
++			}
+ 		}
+ 
+ 	}
 --- net/minecraft/src/EntityPlayerSP.java
 +++ net/minecraft/src/EntityPlayerSP.java
-@@ -21,7 +21,18 @@
+@@ -21,7 +21,19 @@
  	}
  
  	public void moveEntity(double var1, double var3, double var5) {
@@ -302,6 +348,7 @@
 +			super.moveEntity(var1, 0.0D, var5);
 +			this.onGround = true;
 +			this.distanceWalkedModified = var7;
++			this.mc.gameSettings.thirdPersonView = false;
 +		} else {
 +			this.noClip = false;
 +			super.moveEntity(var1, var3, var5);
@@ -309,7 +356,7 @@
  	}
  
  	public void updatePlayerActionState() {
-@@ -32,7 +43,7 @@
+@@ -32,7 +44,7 @@
  	}
  
  	public void onLivingUpdate() {
@@ -318,6 +365,58 @@
  			this.mc.guiAchievement.queueAchievementInformation(AchievementList.openInventory);
  		}
  
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -283,7 +283,7 @@
+ 
+ 			for(var6 = 0; var6 < var5.size(); ++var6) {
+ 				var7 = (Entity)var5.get(var6);
+-				if(var7.isInRangeToRenderVec3D(var1) && (var7.ignoreFrustumCheck || var2.isBoundingBoxInFrustum(var7.boundingBox)) && (var7 != this.mc.renderViewEntity || this.mc.gameSettings.thirdPersonView || this.mc.renderViewEntity.isPlayerSleeping())) {
++				if(var7.isInRangeToRenderVec3D(var1) && (var7.ignoreFrustumCheck || var2.isBoundingBoxInFrustum(var7.boundingBox)) && (var7 != this.mc.renderViewEntity || (this.mc.gameSettings.thirdPersonView || this.mc.renderViewEntity.isPlayerSleeping()) && !this.worldObj.isTitle())) {
+ 					int var8 = MathHelper.floor_double(var7.posY);
+ 					if(var8 < 0) {
+ 						var8 = 0;
+@@ -750,7 +750,12 @@
+ 				}
+ 
+ 				var10 = 0.5F / 1024.0F;
+-				double var22 = this.mc.renderViewEntity.prevPosX + (this.mc.renderViewEntity.posX - this.mc.renderViewEntity.prevPosX) * (double)var1 + (double)(((float)this.cloudOffsetX + var1) * 0.03F);
++				float var58 = (float)this.cloudOffsetX + var1;
++				if(this.mc.theWorld.isTitle()) {
++					var58 *= 10.0F; 
++				}
++
++				double var22 = this.mc.renderViewEntity.prevPosX + (this.mc.renderViewEntity.posX - this.mc.renderViewEntity.prevPosX) * (double)var1 + (double)(var58 * 0.03F);
+ 				double var13 = this.mc.renderViewEntity.prevPosZ + (this.mc.renderViewEntity.posZ - this.mc.renderViewEntity.prevPosZ) * (double)var1;
+ 				int var15 = MathHelper.floor_double(var22 / 2048.0D);
+ 				int var16 = MathHelper.floor_double(var13 / 2048.0D);
+@@ -789,7 +794,12 @@
+ 		Tessellator var3 = Tessellator.instance;
+ 		float var4 = 12.0F;
+ 		float var5 = 4.0F;
+-		double var6 = (this.mc.renderViewEntity.prevPosX + (this.mc.renderViewEntity.posX - this.mc.renderViewEntity.prevPosX) * (double)var1 + (double)(((float)this.cloudOffsetX + var1) * 0.03F)) / (double)var4;
++		float var58 = (float)this.cloudOffsetX + var1;
++		if(this.mc.theWorld.isTitle()) {
++			var58 *= 10.0F; 
++		}
++		
++		double var6 = (this.mc.renderViewEntity.prevPosX + (this.mc.renderViewEntity.posX - this.mc.renderViewEntity.prevPosX) * (double)var1 + (double)(var58 * 0.03F)) / (double)var4;
+ 		double var8 = (this.mc.renderViewEntity.prevPosZ + (this.mc.renderViewEntity.posZ - this.mc.renderViewEntity.prevPosZ) * (double)var1) / (double)var4 + (double)0.33F;
+ 		float var10 = this.worldObj.worldProvider.getCloudHeight() - var2 + 0.33F;
+ 		int var11 = MathHelper.floor_double(var6 / 2048.0D);
+--- net/minecraft/src/Entity.java
++++ net/minecraft/src/Entity.java
+@@ -666,6 +666,10 @@
+ 	}
+ 
+ 	public void applyEntityCollision(Entity var1) {
++		if((var1 instanceof EntityPlayer || this instanceof EntityPlayer) && this.worldObj.isTitle()) {
++			return;
++		}
++		
+ 		if(var1.riddenByEntity != this && var1.ridingEntity != this) {
+ 			double var2 = var1.posX - this.posX;
+ 			double var4 = var1.posZ - this.posZ;
 --- net/minecraft/src/GuiScreen.java
 +++ net/minecraft/src/GuiScreen.java
 @@ -136,7 +136,7 @@
@@ -329,3 +428,58 @@
  			this.drawGradientRect(0, 0, this.width, this.height, -1072689136, -804253680);
  		} else {
  			this.drawBackground(var1);
+--- net/minecraft/src/SoundManager.java
++++ net/minecraft/src/SoundManager.java
+@@ -13,6 +13,7 @@
+ 	private SoundPool soundPoolSounds = new SoundPool();
+ 	private SoundPool soundPoolStreaming = new SoundPool();
+ 	private SoundPool soundPoolMusic = new SoundPool();
++	private SoundPool soundPoolTitleMusic = new SoundPool();
+ 	private int field_587_e = 0;
+ 	private GameSettings options;
+ 	private static boolean loaded = false;
+@@ -85,6 +86,10 @@
+ 		this.soundPoolMusic.addSound(var1, var2);
+ 	}
+ 
++	public void addTitleMusic(String var1, File var2) {
++		this.soundPoolTitleMusic.addSound(var1, var2);
++	}
++
+ 	public void playRandomMusicIfReady() {
+ 		if(loaded && this.options.musicVolume != 0.0F) {
+ 			if(!sndSystem.playing("BgMusic") && !sndSystem.playing("streaming")) {
+@@ -105,6 +110,20 @@
+ 		}
+ 	}
+ 
++	public void playTitleMusicIfReady() {
++		if(loaded && this.options.musicVolume != 0.0F) {
++			if(!sndSystem.playing("BgMusic") && !sndSystem.playing("streaming")) {
++				SoundPoolEntry var1 = this.soundPoolTitleMusic.getRandomSound();
++				if(var1 != null) {
++					sndSystem.backgroundMusic("BgMusic", var1.soundUrl, var1.soundName, false);
++					sndSystem.setVolume("BgMusic", this.options.musicVolume);
++					sndSystem.play("BgMusic");
++				}
++			}
++
++		}
++	}
++
+ 	public void func_338_a(EntityLiving var1, float var2) {
+ 		if(loaded && this.options.soundVolume != 0.0F) {
+ 			if(var1 != null) {
+@@ -191,6 +210,12 @@
+ 				sndSystem.play(var5);
+ 			}
+ 
++		}
++	}
++
++	public void stopStreaming() {
++		if(sndSystem.playing("BgMusic")) {
++			sndSystem.stop("BgMusic");
+ 		}
+ 	}
+ }

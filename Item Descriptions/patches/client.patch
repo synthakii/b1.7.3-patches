@@ -1,0 +1,109 @@
+--- net/minecraft/src/GuiSlotStats.java
++++ net/minecraft/src/GuiSlotStats.java
+@@ -155,13 +155,41 @@
+ 	protected void func_27267_a(StatCrafting var1, int var2, int var3) {
+ 		if(var1 != null) {
+ 			Item var4 = Item.itemsList[var1.func_25072_b()];
+-			String var5 = ("" + StringTranslate.getInstance().translateNamedKey(var4.getItemName())).trim();
+-			if(var5.length() > 0) {
++			StringTranslate language = StringTranslate.getInstance();
++			String descriptionId = var4.getItemName();
++			String var5 = ("" + language.translateNamedKey(descriptionId)).trim();
++			String elementDescription = ("" + language.getElementDescription(descriptionId)).trim();
++			if(var5.length() > 0 || elementDescription.length() > 0) {
+ 				int var6 = var2 + 12;
+ 				int var7 = var3 - 12;
+-				int var8 = GuiStats.func_27127_n(this.field_27269_g).getStringWidth(var5);
+-				GuiStats.func_27135_b(this.field_27269_g, var6 - 3, var7 - 3, var6 + var8 + 3, var7 + 8 + 3, -1073741824, -1073741824);
+-				GuiStats.func_27131_o(this.field_27269_g).drawStringWithShadow(var5, var6, var7, -1);
++				int var8;
++				if(var5.length() > 0) {
++					var8 = GuiStats.func_27127_n(this.field_27269_g).getStringWidth(var5);
++					if(elementDescription.length() > 0) {
++						if(var8 < 120) {
++							var8 = 120;
++						}
++
++						GuiStats.func_27135_b(this.field_27269_g, var6 - 3, var7 - 3, var6 + var8 + 3, var7 + GuiStats.func_27127_n(this.field_27269_g).func_27277_a(elementDescription, var8) + 3 + 12, 0xC0000000, 0xC0000000);
++					} else {
++						GuiStats.func_27135_b(this.field_27269_g, var6 - 3, var7 - 3, var6 + var8 + 3, var7 + 8 + 3, 0xC0000000, 0xC0000000);
++					}
++				} else {
++					var8 = 120;
++					GuiStats.func_27135_b(this.field_27269_g, var6 - 3, var7 - 3, var6 + var8 + 3, var7 + GuiStats.func_27127_n(this.field_27269_g).func_27277_a(elementDescription, var8) + 3, 0xC0000000, 0xC0000000);
++				}
++
++				if(elementDescription.length() > 0) {
++					if(var5.length() > 0) {
++						GuiStats.func_27131_o(this.field_27269_g).func_27278_a(elementDescription, var6, var7 + 12, var8, 0xFFA0A0A0);
++					} else {
++						GuiStats.func_27131_o(this.field_27269_g).func_27278_a(elementDescription, var6, var7, var8, 0xFFA0A0A0);
++					}
++				}
++
++				if(var5.length() > 0) {
++					GuiStats.func_27131_o(this.field_27269_g).drawStringWithShadow(var5, var6, var7, 0xFFFFFFFF);
++				}
+ 			}
+ 
+ 		}
+--- net/minecraft/src/GuiContainer.java
++++ net/minecraft/src/GuiContainer.java
+@@ -64,13 +64,41 @@
+ 		GL11.glDisable(GL11.GL_DEPTH_TEST);
+ 		this.drawGuiContainerForegroundLayer();
+ 		if(var12.getItemStack() == null && var6 != null && var6.getHasStack()) {
+-			String var13 = ("" + StringTranslate.getInstance().translateNamedKey(var6.getStack().getItemName())).trim();
+-			if(var13.length() > 0) {
++			StringTranslate language = StringTranslate.getInstance();
++			String descriptionId = var6.getStack().getItemName();
++			String var13 = ("" + language.translateNamedKey(descriptionId)).trim();
++			String elementDescription = ("" + language.getElementDescription(descriptionId)).trim();
++			if(var13.length() > 0 || elementDescription.length() > 0) {
+ 				var9 = var1 - var4 + 12;
+ 				var10 = var2 - var5 - 12;
+-				int var11 = this.fontRenderer.getStringWidth(var13);
+-				this.drawGradientRect(var9 - 3, var10 - 3, var9 + var11 + 3, var10 + 8 + 3, -1073741824, -1073741824);
+-				this.fontRenderer.drawStringWithShadow(var13, var9, var10, -1);
++				int var11;
++				if(var13.length() > 0) {
++					var11 = this.fontRenderer.getStringWidth(var13);
++					if(elementDescription.length() > 0) {
++						if(var11 < 120) {
++							var11 = 120;
++						}
++
++						this.drawGradientRect(var9 - 3, var10 - 3, var9 + var11 + 3, var10 + this.fontRenderer.func_27277_a(elementDescription, var11) + 3 + 12, 0xC0000000, 0xC0000000);
++					} else {
++						this.drawGradientRect(var9 - 3, var10 - 3, var9 + var11 + 3, var10 + 8 + 3, 0xC0000000, 0xC0000000);
++					}
++				} else {
++					var11 = 120;
++					this.drawGradientRect(var9 - 3, var10 - 3, var9 + var11 + 3, var10 + this.fontRenderer.func_27277_a(elementDescription, var11) + 3, 0xC0000000, 0xC0000000);
++				}
++
++				if(elementDescription.length() > 0) {
++					if(var13.length() > 0) {
++						this.fontRenderer.func_27278_a(elementDescription, var9, var10 + 12, var11, 0xFFA0A0A0);
++					} else {
++						this.fontRenderer.func_27278_a(elementDescription, var9, var10, var11, 0xFFA0A0A0);
++					}
++				}
++
++				if(var13.length() > 0) {
++					this.fontRenderer.drawStringWithShadow(var13, var9, var10, 0xFFFFFFFF);
++				}
+ 			}
+ 		}
+ 
+--- net/minecraft/src/StringTranslate.java
++++ net/minecraft/src/StringTranslate.java
+@@ -33,4 +33,8 @@
+ 	public String translateNamedKey(String var1) {
+ 		return this.translateTable.getProperty(var1 + ".name", "");
+ 	}
++
++	public String getElementDescription(String elementId) {
++		return this.translateTable.getProperty(elementId + ".desc", "");
++	}
+ }

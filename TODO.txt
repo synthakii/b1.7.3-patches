@@ -5,7 +5,6 @@ Fix boat dismounting
 Fix fence lighting
 Fix pick block?
 Fix rendering with sleeping
-Add front thirdperson?
-Add FOV slider
+backport tool breakage particles with sound, and seperate sheep shearing sound, and add lava pop/liquid particles when above a 1 block thick ceiling
 
 Combine modpack classes into a large mod, attempt to find patch files when possible

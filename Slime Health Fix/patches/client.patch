@@ -1,14 +1,11 @@
 --- net/minecraft/src/EntitySlime.java
 +++ net/minecraft/src/EntitySlime.java
-@@ -97,6 +97,11 @@
+@@ -97,7 +97,7 @@
  
  	public void setEntityDead() {
  		int var1 = this.getSlimeSize();
-+
-+		if(this.health < 0) {
-+			this.health = 0;
-+		}
-+
- 		if(!this.worldObj.multiplayerWorld && var1 > 1 && this.health == 0) {
+-		if(!this.worldObj.multiplayerWorld && var1 > 1 && this.health == 0) {
++		if(!this.worldObj.multiplayerWorld && var1 > 1 && this.health <= 0) {
  			for(int var2 = 0; var2 < 4; ++var2) {
  				float var3 = ((float)(var2 % 2) - 0.5F) * (float)var1 / 4.0F;
+ 				float var4 = ((float)(var2 / 2) - 0.5F) * (float)var1 / 4.0F;

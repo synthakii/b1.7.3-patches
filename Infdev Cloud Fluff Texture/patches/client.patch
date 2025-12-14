@@ -1,0 +1,78 @@
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.src;
+ 
++import java.nio.FloatBuffer;
+ import java.nio.IntBuffer;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -8,7 +9,9 @@
+ import java.util.Random;
+ import net.minecraft.client.Minecraft;
+ import org.lwjgl.opengl.ARBOcclusionQuery;
++import org.lwjgl.BufferUtils;
+ import org.lwjgl.opengl.GL11;
++import org.lwjgl.opengl.GL13;
+ import org.lwjgl.opengl.GL15;
+ 
+ public class RenderGlobal implements IWorldAccess {
+@@ -58,6 +61,7 @@
+ 	double prevSortZ = -9999.0D;
+ 	public float damagePartialTime;
+ 	int frustrumCheckOffset = 0;
++	FloatBuffer floatBuffer;
+ 
+ 	public RenderGlobal(Minecraft var1, RenderEngine var2) {
+ 		this.mc = var1;
+@@ -74,6 +78,7 @@
+ 			ARBOcclusionQuery.glGenQueriesARB(this.glOcclusionQueryBase);
+ 		}
+ 
++		this.floatBuffer = BufferUtils.createFloatBuffer(16);
+ 		this.starGLCallList = GLAllocation.generateDisplayLists(3);
+ 		GL11.glPushMatrix();
+ 		GL11.glNewList(this.starGLCallList, GL11.GL_COMPILE);
+@@ -796,6 +801,22 @@
+ 		int var12 = MathHelper.floor_double(var8 / 2048.0D);
+ 		var6 -= (double)(var11 * 2048);
+ 		var8 -= (double)(var12 * 2048);
++		GL13.glActiveTexture(GL13.GL_TEXTURE1);
++		GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.renderEngine.getTexture("/fluff.png"));
++		GL11.glTexGeni(GL11.GL_S, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
++		GL11.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, this.CalcFloatBuffer(1.0F, 0.0F));
++		GL11.glTexGeni(GL11.GL_T, GL11.GL_TEXTURE_GEN_MODE, GL11.GL_OBJECT_LINEAR);
++		GL11.glTexGen(GL11.GL_T, GL11.GL_OBJECT_PLANE, this.CalcFloatBuffer(0.0F, 1.0F));
++		GL11.glEnable(GL11.GL_TEXTURE_GEN_S);
++		GL11.glEnable(GL11.GL_TEXTURE_GEN_T);
++		GL11.glEnable(GL11.GL_TEXTURE_2D);
++		GL11.glMatrixMode(GL11.GL_TEXTURE);
++		GL11.glLoadIdentity();
++		GL11.glScalef(0.25F, 0.25F, 0.25F);
++		GL11.glTranslatef((float)var6, (float)var8, 0.0F);
++		GL11.glMatrixMode(GL11.GL_MODELVIEW);
++		GL13.glActiveTexture(GL13.GL_TEXTURE0);
++		GL11.glEnable(GL11.GL_TEXTURE_2D);
+ 		GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.renderEngine.getTexture("/environment/clouds.png"));
+ 		GL11.glEnable(GL11.GL_BLEND);
+ 		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+@@ -920,7 +941,19 @@
+ 		GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+ 		GL11.glDisable(GL11.GL_BLEND);
+ 		GL11.glEnable(GL11.GL_CULL_FACE);
++		GL13.glActiveTexture(GL13.GL_TEXTURE1);
++		GL11.glDisable(GL11.GL_TEXTURE_2D);
++		GL11.glDisable(GL11.GL_TEXTURE_GEN_S);
++		GL11.glDisable(GL11.GL_TEXTURE_GEN_T);
++		GL13.glActiveTexture(GL13.GL_TEXTURE0);
+ 	}
++
++	private FloatBuffer CalcFloatBuffer(float var1, float var2) {
++		this.floatBuffer.clear();
++		this.floatBuffer.put(var1).put(0.0F).put(var2).put(0.0F);
++		this.floatBuffer.flip();
++		return this.floatBuffer;
++ 	}
+ 
+ 	public boolean updateRenderers(EntityLiving var1, boolean var2) {
+ 		boolean var3 = false;

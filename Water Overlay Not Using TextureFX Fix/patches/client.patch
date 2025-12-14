@@ -1,0 +1,10 @@
+--- net/minecraft/client/Minecraft.java
++++ net/minecraft/client/Minecraft.java
+@@ -1315,6 +1315,7 @@
+ 			}
+ 
+ 			this.renderViewEntity = this.thePlayer;
++			this.textureWaterFX.textureId = this.renderEngine.getTexture("/misc/water.png");
+ 		} else {
+ 			this.thePlayer = null;
+ 		}

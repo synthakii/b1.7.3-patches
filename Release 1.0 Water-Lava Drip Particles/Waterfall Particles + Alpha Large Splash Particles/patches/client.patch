@@ -1,0 +1,342 @@
+--- net/minecraft/src/World.java
++++ net/minecraft/src/World.java
+@@ -676,6 +676,16 @@
+ 		}
+ 	}
+ 
++	public int func_35451_b(int var1, int var2, int var3, int var4) {
++		int var5 = this.getSavedLightValue(EnumSkyBlock.Sky, var1, var2, var3);
++		int var6 = this.getSavedLightValue(EnumSkyBlock.Block, var1, var2, var3);
++		if(var6 < var4) {
++			var6 = var4;
++		}
++
++		return var5 << 20 | var6 << 4;
++	}
++
+ 	public float getBrightness(int var1, int var2, int var3, int var4) {
+ 		int var5 = this.getBlockLightValue(var1, var2, var3);
+ 		if(var5 < var4) {
+--- net/minecraft/src/EntityBoat.java
++++ net/minecraft/src/EntityBoat.java
+@@ -234,11 +234,11 @@
+ 					if(this.rand.nextBoolean()) {
+ 						var17 = this.posX - var8 * var13 * 0.8D + var10 * var15;
+ 						var19 = this.posZ - var10 * var13 * 0.8D - var8 * var15;
+-						this.worldObj.spawnParticle("splash", var17, this.posY - 0.125D, var19, this.motionX, this.motionY, this.motionZ);
++						this.worldObj.spawnParticle("largesplash", var17, this.posY - 0.125D, var19, this.motionX, this.motionY, this.motionZ);
+ 					} else {
+ 						var17 = this.posX + var8 + var10 * var13 * 0.7D;
+ 						var19 = this.posZ + var10 - var8 * var13 * 0.7D;
+-						this.worldObj.spawnParticle("splash", var17, this.posY - 0.125D, var19, this.motionX, this.motionY, this.motionZ);
++						this.worldObj.spawnParticle("largesplash", var17, this.posY - 0.125D, var19, this.motionX, this.motionY, this.motionZ);
+ 					}
+ 				}
+ 			}
+--- net/minecraft/src/EntityRainFX.java
++++ net/minecraft/src/EntityRainFX.java
+@@ -1,6 +1,8 @@
+ package net.minecraft.src;
+ 
+ public class EntityRainFX extends EntityFX {
++	int particleTextureIndexRand = this.rand.nextInt(4);
++
+ 	public EntityRainFX(World var1, double var2, double var4, double var6) {
+ 		super(var1, var2, var4, var6, 0.0D, 0.0D, 0.0D);
+ 		this.motionX *= (double)0.3F;
+@@ -9,7 +11,7 @@
+ 		this.particleRed = 1.0F;
+ 		this.particleGreen = 1.0F;
+ 		this.particleBlue = 1.0F;
+-		this.particleTextureIndex = 19 + this.rand.nextInt(4);
++		this.particleTextureIndex = 19 + this.particleTextureIndexRand;
+ 		this.setSize(0.01F, 0.01F);
+ 		this.particleGravity = 0.06F;
+ 		this.particleMaxAge = (int)(8.0D / (Math.random() * 0.8D + 0.2D));
+--- /dev/null
++++ net/minecraft/src/EntityLargeSplashFX.java
+@@ -1,0 +1,15 @@
++package net.minecraft.src;
++
++public class EntityLargeSplashFX extends EntityRainFX {
++	public EntityLargeSplashFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12) {
++		super(var1, var2, var4, var6);
++		this.particleGravity = 0.04F;
++		this.particleTextureIndex = ++this.particleTextureIndex - (3 + this.particleTextureIndexRand);
++		if(var10 == 0.0D && (var8 != 0.0D || var12 != 0.0D)) {
++			this.motionX = var8;
++			this.motionY = var10 + 0.1D;
++			this.motionZ = var12;
++		}
++
++	}
++}
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1298,12 +1298,18 @@
+ 					this.mc.effectRenderer.addEffect(new EntityFootStepFX(this.renderEngine, this.worldObj, var2, var4, var6));
+ 				} else if(var1.equals("splash")) {
+ 					this.mc.effectRenderer.addEffect(new EntitySplashFX(this.worldObj, var2, var4, var6, var8, var10, var12));
++				} else if(var1.equals("largesplash")) {
++					this.mc.effectRenderer.addEffect(new EntityLargeSplashFX(this.worldObj, var2, var4, var6, var8, var10, var12));
+ 				} else if(var1.equals("largesmoke")) {
+ 					this.mc.effectRenderer.addEffect(new EntitySmokeFX(this.worldObj, var2, var4, var6, var8, var10, var12, 2.5F));
+ 				} else if(var1.equals("reddust")) {
+ 					this.mc.effectRenderer.addEffect(new EntityReddustFX(this.worldObj, var2, var4, var6, (float)var8, (float)var10, (float)var12));
+ 				} else if(var1.equals("snowballpoof")) {
+ 					this.mc.effectRenderer.addEffect(new EntitySlimeFX(this.worldObj, var2, var4, var6, Item.snowball));
++				} else if(var1.equals("dripWater")) {
++					this.mc.effectRenderer.addEffect(new EntityDropParticleFX(this.worldObj, var2, var4, var6, Material.water));
++				} else if(var1.equals("dripLava")) {
++					this.mc.effectRenderer.addEffect(new EntityDropParticleFX(this.worldObj, var2, var4, var6, Material.lava));
+ 				} else if(var1.equals("snowshovel")) {
+ 					this.mc.effectRenderer.addEffect(new EntitySnowShovelFX(this.worldObj, var2, var4, var6, var8, var10, var12));
+ 				} else if(var1.equals("slime")) {
+--- net/minecraft/src/BlockFluid.java
++++ net/minecraft/src/BlockFluid.java
+@@ -191,6 +191,72 @@
+ 	}
+ 
+ 	public void randomDisplayTick(World var1, int var2, int var3, int var4, Random var5) {
++		if(this.blockMaterial == Material.water) {
++			for(int var7 = 0; var7 < 4; ++var7) {
++				int var8 = var5.nextInt(4);
++				int var9 = var2;
++				int var10 = var4;
++				if(var8 == 0) {
++					--var9;
++				}
++
++				if(var8 == 1) {
++					++var9;
++				}
++
++				if(var8 == 2) {
++					--var10;
++				}
++
++				if(var8 == 3) {
++					++var10;
++				}
++
++				Material var11 = var1.getBlockMaterial(var9, var3 - 1, var10);
++				if(var1.getBlockMaterial(var9, var3, var10) == Material.air && (var11.getIsSolid() || var11.getIsLiquid())) {
++					float var12 = 0.0625F;
++					double var13 = (float)var2 + var5.nextFloat();
++					double var15 = (float)var3 + var5.nextFloat();
++					double var17 = (float)var4 + var5.nextFloat();
++					if(var8 == 0) {
++						var13 = (float)var2 - var12;
++					}
++
++					if(var8 == 1) {
++						var13 = (float)(var2 + 1) + var12;
++					}
++
++					if(var8 == 2) {
++						var17 = (float)var4 - var12;
++					}
++
++					if(var8 == 3) {
++						var17 = (float)(var4 + 1) + var12;
++					}
++
++					double var19 = 0.0D;
++					double var21 = 0.0D;
++					if(var8 == 0) {
++						var19 = -var12;
++					}
++
++					if(var8 == 1) {
++						var19 = var12;
++					}
++
++					if(var8 == 2) {
++						var21 = -var12;
++					}
++
++					if(var8 == 3) {
++						var21 = var12;
++					}
++
++					var1.spawnParticle("splash", var13, var15, var17, var19, 0.0D, var21);
++				}
++			}
++		}
++
+ 		if(this.blockMaterial == Material.water && var5.nextInt(64) == 0) {
+ 			int var6 = var1.getBlockMetadata(var2, var3, var4);
+ 			if(var6 > 0 && var6 < 8) {
+@@ -198,13 +264,33 @@
+ 			}
+ 		}
+ 
++		double var12;
++		double var8;
++		double var10;
+ 		if(this.blockMaterial == Material.lava && var1.getBlockMaterial(var2, var3 + 1, var4) == Material.air && !var1.isBlockOpaqueCube(var2, var3 + 1, var4) && var5.nextInt(100) == 0) {
+-			double var12 = (double)((float)var2 + var5.nextFloat());
+-			double var8 = (double)var3 + this.maxY;
+-			double var10 = (double)((float)var4 + var5.nextFloat());
+-			var1.spawnParticle("lava", var12, var8, var10, 0.0D, 0.0D, 0.0D);
+-		}
+-
++			if(var5.nextInt(100) == 0) {
++				var12 = (double)((float)var2 + var5.nextFloat());
++				var8 = (double)var3 + this.maxY;
++				var10 = (double)((float)var4 + var5.nextFloat());
++				var1.spawnParticle("lava", var12, var8, var10, 0.0D, 0.0D, 0.0D);
++				var1.playSoundEffect(var12, var8, var10, "liquid.lavapop", 0.2F + var5.nextFloat() * 0.2F, 0.9F + var5.nextFloat() * 0.15F);
++			}
++
++			if(var5.nextInt(200) == 0) {
++				var1.playSoundEffect((double)var2, (double)var3, (double)var4, "liquid.lava", 0.2F + var5.nextFloat() * 0.2F, 0.9F + var5.nextFloat() * 0.15F);
++			}
++		}
++
++		if(var5.nextInt(10) == 0 && var1.isBlockNormalCube(var2, var3 - 1, var4) && !var1.getBlockMaterial(var2, var3 - 2, var4).getIsSolid()) {
++			var12 = (double)((float)var2 + var5.nextFloat());
++			var8 = (double)var3 - 1.05D;
++			var10 = (double)((float)var4 + var5.nextFloat());
++			if(this.blockMaterial == Material.water) {
++				var1.spawnParticle("dripWater", var12, var8, var10, 0.0D, 0.0D, 0.0D);
++			} else {
++				var1.spawnParticle("dripLava", var12, var8, var10, 0.0D, 0.0D, 0.0D);
++			}
++		}
+ 	}
+ 
+ 	public static double func_293_a(IBlockAccess var0, int var1, int var2, int var3, Material var4) {
+--- net/minecraft/src/Entity.java
++++ net/minecraft/src/Entity.java
+@@ -187,7 +187,11 @@
+ 				for(var3 = 0; (float)var3 < 1.0F + this.width * 20.0F; ++var3) {
+ 					var4 = (this.rand.nextFloat() * 2.0F - 1.0F) * this.width;
+ 					var5 = (this.rand.nextFloat() * 2.0F - 1.0F) * this.width;
+-					this.worldObj.spawnParticle("splash", this.posX + (double)var4, (double)(var2 + 1.0F), this.posZ + (double)var5, this.motionX, this.motionY, this.motionZ);
++					if(this.motionY < -0.5F) {
++						this.worldObj.spawnParticle("largesplash", this.posX + (double)var4, (double)(var2 + 1.0F), this.posZ + (double)var5, this.motionX, this.motionY, this.motionZ);
++					} else {
++						this.worldObj.spawnParticle("splash", this.posX + (double)var4, (double)(var2 + 1.0F), this.posZ + (double)var5, this.motionX, this.motionY, this.motionZ);
++					}
+ 				}
+ 			}
+ 
+@@ -581,6 +585,20 @@
+ 			float var6 = MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F);
+ 			this.motionX += (double)(var1 * var6 - var2 * var5);
+ 			this.motionZ += (double)(var2 * var6 + var1 * var5);
++		}
++	}
++
++	public int func_35115_a(float var1) {
++		int var2 = MathHelper.floor_double(this.posX);
++		int var3 = MathHelper.floor_double(this.posZ);
++		World var10000 = this.worldObj;
++		this.worldObj.getClass();
++		if(var10000.blockExists(var2, 128 / 2, var3)) {
++			double var4 = (this.boundingBox.maxY - this.boundingBox.minY) * 0.66D;
++			int var6 = MathHelper.floor_double(this.posY - (double)this.yOffset + var4);
++			return this.worldObj.func_35451_b(var2, var6, var3, 0);
++		} else {
++			return 0;
+ 		}
+ 	}
+ 
+--- /dev/null
++++ net/minecraft/src/EntityDropParticleFX.java
+@@ -1,0 +1,94 @@
++package net.minecraft.src;
++
++public class EntityDropParticleFX extends EntityFX {
++	private Material field_40103_a;
++	private int field_40104_aw;
++
++	public EntityDropParticleFX(World var1, double var2, double var4, double var6, Material var8) {
++		super(var1, var2, var4, var6, 0.0D, 0.0D, 0.0D);
++		this.motionX = this.motionY = this.motionZ = 0.0D;
++		if(var8 == Material.water) {
++			this.particleRed = 0.0F;
++			this.particleGreen = 0.0F;
++			this.particleBlue = 1.0F;
++		} else {
++			this.particleRed = 1.0F;
++			this.particleGreen = 0.0F;
++			this.particleBlue = 0.0F;
++		}
++
++		this.particleTextureIndex = 113;
++		this.setSize(0.01F, 0.01F);
++		this.particleGravity = 0.06F;
++		this.field_40103_a = var8;
++		this.field_40104_aw = 40;
++		this.particleMaxAge = (int)(64.0D / (Math.random() * 0.8D + 0.2D));
++		this.motionX = this.motionY = this.motionZ = 0.0D;
++	}
++
++	public void renderParticle(Tessellator var1, float var2, float var3, float var4, float var5, float var6, float var7) {
++		super.renderParticle(var1, var2, var3, var4, var5, var6, var7);
++	}
++
++	public int getEntityBrightnessForRender(float var1) {
++		return this.field_40103_a == Material.water ? super.func_35115_a(var1) : 257;
++	}
++
++	public float getEntityBrightness(float var1) {
++		return this.field_40103_a == Material.water ? super.getEntityBrightness(var1) : 1.0F;
++	}
++
++	public void onUpdate() {
++		this.prevPosX = this.posX;
++		this.prevPosY = this.posY;
++		this.prevPosZ = this.posZ;
++		if(this.field_40103_a == Material.water) {
++			this.particleRed = 0.2F;
++			this.particleGreen = 0.3F;
++			this.particleBlue = 1.0F;
++		} else {
++			this.particleRed = 1.0F;
++			this.particleGreen = 16.0F / (float)(40 - this.field_40104_aw + 16);
++			this.particleBlue = 4.0F / (float)(40 - this.field_40104_aw + 8);
++		}
++
++		this.motionY -= (double)this.particleGravity;
++		if(this.field_40104_aw-- > 0) {
++			this.motionX *= 0.02D;
++			this.motionY *= 0.02D;
++			this.motionZ *= 0.02D;
++			this.particleTextureIndex = 113;
++		} else {
++			this.particleTextureIndex = 112;
++		}
++
++		this.moveEntity(this.motionX, this.motionY, this.motionZ);
++		this.motionX *= (double)0.98F;
++		this.motionY *= (double)0.98F;
++		this.motionZ *= (double)0.98F;
++		if(this.particleMaxAge-- <= 0) {
++			this.setEntityDead();
++		}
++
++		if(this.onGround) {
++			if(this.field_40103_a == Material.water) {
++				this.setEntityDead();
++				this.worldObj.spawnParticle("splash", this.posX, this.posY, this.posZ, 0.0D, 0.0D, 0.0D);
++			} else {
++				this.particleTextureIndex = 114;
++			}
++
++			this.motionX *= (double)0.7F;
++			this.motionZ *= (double)0.7F;
++		}
++
++		Material var1 = this.worldObj.getBlockMaterial(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ));
++		if(var1.getIsLiquid() || var1.isSolid()) {
++			double var2 = (double)((float)(MathHelper.floor_double(this.posY) + 1) - BlockFluid.getPercentAir(this.worldObj.getBlockMetadata(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY), MathHelper.floor_double(this.posZ))));
++			if(this.posY < var2) {
++				this.setEntityDead();
++			}
++		}
++
++	}
++}

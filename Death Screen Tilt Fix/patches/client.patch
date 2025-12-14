@@ -1,46 +1,16 @@
---- net/minecraft/src/EntityRenderer.java
-+++ net/minecraft/src/EntityRenderer.java
-@@ -142,7 +142,7 @@
- 		}
- 
- 		if(var2.health <= 0) {
--			float var4 = (float)var2.deathTime + var1;
-+			float var4 = (float)var2.deathCam + var1;
- 			var3 /= (1.0F - 500.0F / (var4 + 500.0F)) * 2.0F + 1.0F;
- 		}
- 
-@@ -154,7 +154,7 @@
- 		float var3 = (float)var2.hurtTime - var1;
- 		float var4;
- 		if(var2.health <= 0) {
--			var4 = (float)var2.deathTime + var1;
-+			var4 = (float)var2.deathCam + var1;
- 			GL11.glRotatef(40.0F - 8000.0F / (var4 + 200.0F), 0.0F, 0.0F, 1.0F);
- 		}
- 
 --- net/minecraft/client/Minecraft.java
 +++ net/minecraft/client/Minecraft.java
-@@ -939,6 +939,7 @@
- 		this.entityRenderer.getMouseOver(1.0F);
- 		int var3;
- 		if(this.thePlayer != null) {
-+			this.thePlayer.onPlayerUpdate();
- 			IChunkProvider var1 = this.theWorld.getIChunkProvider();
- 			if(var1 instanceof ChunkProviderLoadOrGenerate) {
- 				ChunkProviderLoadOrGenerate var2 = (ChunkProviderLoadOrGenerate)var1;
---- net/minecraft/src/EntityPlayerSP.java
-+++ net/minecraft/src/EntityPlayerSP.java
-@@ -248,4 +248,10 @@
+@@ -1144,6 +1144,10 @@
+ 					--this.theWorld.field_27172_i;
+ 				}
  
- 		return false;
- 	}
++				if(this.thePlayer.isDead) {
++					++this.thePlayer.deathTime;
++				}
 +
-+	public void onPlayerUpdate() {
-+		if(this.health <= 0) {
-+			this.deathCam++;
-+		}
-+	}
- }
+ 				this.theWorld.updateEntities();
+ 			}
+ 
 --- net/minecraft/src/ItemRenderer.java
 +++ net/minecraft/src/ItemRenderer.java
 @@ -425,6 +425,10 @@
@@ -54,13 +24,3 @@
  		float var7 = var6 - this.equippedProgress;
  		if(var7 < -var5) {
  			var7 = -var5;
---- net/minecraft/src/EntityLiving.java
-+++ net/minecraft/src/EntityLiving.java
-@@ -30,6 +30,7 @@
- 	public int maxHurtTime;
- 	public float attackedAtYaw = 0.0F;
- 	public int deathTime = 0;
-+	public int deathCam = 0;
- 	public int attackTime = 0;
- 	public float cameraPitch;
- 	public float field_9328_R;

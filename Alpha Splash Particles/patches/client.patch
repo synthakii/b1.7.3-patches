@@ -1,0 +1,31 @@
+--- net/minecraft/src/EntitySplashFX.java
++++ net/minecraft/src/EntitySplashFX.java
+@@ -4,7 +4,7 @@
+ 	public EntitySplashFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12) {
+ 		super(var1, var2, var4, var6);
+ 		this.particleGravity = 0.04F;
+-		++this.particleTextureIndex;
++		this.particleTextureIndex = ++this.particleTextureIndex - 3 - this.particleTextureIndexRand;
+ 		if(var10 == 0.0D && (var8 != 0.0D || var12 != 0.0D)) {
+ 			this.motionX = var8;
+ 			this.motionY = var10 + 0.1D;
+--- net/minecraft/src/EntityRainFX.java
++++ net/minecraft/src/EntityRainFX.java
+@@ -1,6 +1,8 @@
+ package net.minecraft.src;
+ 
+ public class EntityRainFX extends EntityFX {
++	int particleTextureIndexRand = this.rand.nextInt(4);
++
+ 	public EntityRainFX(World var1, double var2, double var4, double var6) {
+ 		super(var1, var2, var4, var6, 0.0D, 0.0D, 0.0D);
+ 		this.motionX *= (double)0.3F;
+@@ -9,7 +11,7 @@
+ 		this.particleRed = 1.0F;
+ 		this.particleGreen = 1.0F;
+ 		this.particleBlue = 1.0F;
+-		this.particleTextureIndex = 19 + this.rand.nextInt(4);
++		this.particleTextureIndex = 19 + particleTextureIndexRand;
+ 		this.setSize(0.01F, 0.01F);
+ 		this.particleGravity = 0.06F;
+ 		this.particleMaxAge = (int)(8.0D / (Math.random() * 0.8D + 0.2D));

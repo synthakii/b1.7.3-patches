@@ -1,0 +1,159 @@
+--- net/minecraft/src/ItemFood.java
++++ net/minecraft/src/ItemFood.java
+@@ -14,6 +14,11 @@
+ 	public ItemStack onItemRightClick(ItemStack var1, World var2, EntityPlayer var3) {
+ 		--var1.stackSize;
+ 		var3.heal(this.healAmount);
++		var2.playSoundAtEntity(var3, "random.eat", 0.5F + 0.5F * (float)var3.rand.nextInt(2), (var3.rand.nextFloat() - var3.rand.nextFloat()) * 0.2F + 1.0F);
++		if(this.healAmount + var3.health >= 20) {
++			var2.playSoundAtEntity(var3, "random.burp", 0.5F, var2.rand.nextFloat() * 0.1F + 0.9F);
++		}
++		
+ 		return var1;
+ 	}
+ 
+--- net/minecraft/src/EntityPlayerSP.java
++++ net/minecraft/src/EntityPlayerSP.java
+@@ -106,6 +106,10 @@
+ 	}
+ 
+ 	public void closeScreen() {
++		if(this.mc.currentScreen instanceof GuiChest) {
++			this.worldObj.playSoundAtEntity(this, "random.door_close", 1.0F, this.worldObj.rand.nextFloat() * 0.1F + 0.9F);
++		}
++
+ 		super.closeScreen();
+ 		this.mc.displayGuiScreen((GuiScreen)null);
+ 	}
+@@ -116,6 +120,7 @@
+ 
+ 	public void displayGUIChest(IInventory var1) {
+ 		this.mc.displayGuiScreen(new GuiChest(this.inventory, var1));
++		this.worldObj.playSoundAtEntity(this, "random.door_open", 1.0F, this.worldObj.rand.nextFloat() * 0.1F + 0.9F);
+ 	}
+ 
+ 	public void displayWorkbenchGUI(int var1, int var2, int var3) {
+--- net/minecraft/src/RenderGlobal.java
++++ net/minecraft/src/RenderGlobal.java
+@@ -1310,8 +1310,13 @@
+ 					this.mc.effectRenderer.addEffect(new EntitySlimeFX(this.worldObj, var2, var4, var6, Item.slimeBall));
+ 				} else if(var1.equals("heart")) {
+ 					this.mc.effectRenderer.addEffect(new EntityHeartFX(this.worldObj, var2, var4, var6, var8, var10, var12));
++				} else {
++					int var24;
++					if(var1.startsWith("iconcrack_")) {
++						var24 = Integer.parseInt(var1.substring(var1.indexOf("_") + 1));
++						this.mc.effectRenderer.addEffect(new EntityBreakingFX(this.worldObj, var2, var4, var6, var8, var10, var12, Item.itemsList[var24]));
++					}
+ 				}
+-
+ 			}
+ 		}
+ 	}
+--- net/minecraft/src/ItemStack.java
++++ net/minecraft/src/ItemStack.java
+@@ -121,10 +121,11 @@
+ 		return Item.itemsList[this.itemID].getMaxDamage();
+ 	}
+ 
+-	public void damageItem(int var1, Entity var2) {
++	public void damageItem(int var1, EntityLiving var2) {
+ 		if(this.isItemStackDamageable()) {
+ 			this.itemDamage += var1;
+ 			if(this.itemDamage > this.getMaxDamage()) {
++				var2.func_41005_b(this);
+ 				if(var2 instanceof EntityPlayer) {
+ 					((EntityPlayer)var2).addStat(StatList.field_25170_B[this.itemID], 1);
+ 				}
+--- net/minecraft/src/EntitySheep.java
++++ net/minecraft/src/EntitySheep.java
+@@ -47,6 +47,7 @@
+ 			}
+ 
+ 			var2.damageItem(1, var1);
++			this.worldObj.playSoundAtEntity(this, "mob.sheep.shear", 1.0F, 1.0F);
+ 		}
+ 
+ 		return false;
+--- net/minecraft/src/EntityLiving.java
++++ net/minecraft/src/EntityLiving.java
+@@ -441,6 +441,12 @@
+ 		super.fall(var1);
+ 		int var2 = (int)Math.ceil((double)(var1 - 3.0F));
+ 		if(var2 > 0) {
++			if(var2 > 4) {
++				this.worldObj.playSoundAtEntity(this, "damage.fallbig", 1.0F, 1.0F);
++			} else {
++				this.worldObj.playSoundAtEntity(this, "damage.fallsmall", 1.0F, 1.0F);
++			}
++			
+ 			this.attackEntityFrom((Entity)null, var2);
+ 			int var3 = this.worldObj.getBlockId(MathHelper.floor_double(this.posX), MathHelper.floor_double(this.posY - (double)0.2F - (double)this.yOffset), MathHelper.floor_double(this.posZ));
+ 			if(var3 > 0) {
+@@ -871,5 +877,21 @@
+ 
+ 	public int getItemIcon(ItemStack var1) {
+ 		return var1.getIconIndex();
++	}
++
++	public void func_41005_b(ItemStack var1) {
++		this.worldObj.playSoundAtEntity(this, "random.break", 0.8F, 0.8F + this.worldObj.rand.nextFloat() * 0.4F);
++
++		for(int var2 = 0; var2 < 5; ++var2) {
++			Vec3D var3 = Vec3D.createVector(((double)this.rand.nextFloat() - 0.5D) * 0.1D, Math.random() * 0.1D + 0.1D, 0.0D);
++			var3.rotateAroundX(-this.rotationPitch * (float)Math.PI / 180.0F);
++			var3.rotateAroundY(-this.rotationYaw * (float)Math.PI / 180.0F);
++			Vec3D var4 = Vec3D.createVector(((double)this.rand.nextFloat() - 0.5D) * 0.3D, (double)(-this.rand.nextFloat()) * 0.6D - 0.3D, 0.6D);
++			var4.rotateAroundX(-this.rotationPitch * (float)Math.PI / 180.0F);
++			var4.rotateAroundY(-this.rotationYaw * (float)Math.PI / 180.0F);
++			var4 = var4.addVector(this.posX, this.posY + (double)this.getEyeHeight(), this.posZ);
++			this.worldObj.spawnParticle("iconcrack_" + var1.getItem().shiftedIndex, var4.xCoord, var4.yCoord, var4.zCoord, var3.xCoord, var3.yCoord + 0.05D, var3.zCoord);
++		}
++
+ 	}
+ }
+--- /dev/null
++++ net/minecraft/src/EntityBreakingFX.java
+@@ -1,0 +1,42 @@
++package net.minecraft.src;
++
++public class EntityBreakingFX extends EntityFX {
++	public EntityBreakingFX(World var1, double var2, double var4, double var6, Item var8) {
++		super(var1, var2, var4, var6, 0.0D, 0.0D, 0.0D);
++		this.particleTextureIndex = var8.getIconFromDamage(0);
++		this.particleRed = this.particleGreen = this.particleBlue = 1.0F;
++		this.particleGravity = Block.blockSnow.blockParticleGravity;
++		this.particleScale /= 2.0F;
++	}
++
++	public EntityBreakingFX(World var1, double var2, double var4, double var6, double var8, double var10, double var12, Item var14) {
++		this(var1, var2, var4, var6, var14);
++		this.motionX *= (double)0.1F;
++		this.motionY *= (double)0.1F;
++		this.motionZ *= (double)0.1F;
++		this.motionX += var8;
++		this.motionY += var10;
++		this.motionZ += var12;
++	}
++
++	public int getFXLayer() {
++		return 2;
++	}
++
++	public void renderParticle(Tessellator var1, float var2, float var3, float var4, float var5, float var6, float var7) {
++		float var8 = ((float)(this.particleTextureIndex % 16) + this.particleTextureJitterX / 4.0F) / 16.0F;
++		float var9 = var8 + 0.999F / 64.0F;
++		float var10 = ((float)(this.particleTextureIndex / 16) + this.particleTextureJitterY / 4.0F) / 16.0F;
++		float var11 = var10 + 0.999F / 64.0F;
++		float var12 = 0.1F * this.particleScale;
++		float var13 = (float)(this.prevPosX + (this.posX - this.prevPosX) * (double)var2 - interpPosX);
++		float var14 = (float)(this.prevPosY + (this.posY - this.prevPosY) * (double)var2 - interpPosY);
++		float var15 = (float)(this.prevPosZ + (this.posZ - this.prevPosZ) * (double)var2 - interpPosZ);
++		float var16 = 1.0F;
++		var1.setColorOpaque_F(var16 * this.particleRed, var16 * this.particleGreen, var16 * this.particleBlue);
++		var1.addVertexWithUV((double)(var13 - var3 * var12 - var6 * var12), (double)(var14 - var4 * var12), (double)(var15 - var5 * var12 - var7 * var12), (double)var8, (double)var11);
++		var1.addVertexWithUV((double)(var13 - var3 * var12 + var6 * var12), (double)(var14 + var4 * var12), (double)(var15 - var5 * var12 + var7 * var12), (double)var8, (double)var10);
++		var1.addVertexWithUV((double)(var13 + var3 * var12 + var6 * var12), (double)(var14 + var4 * var12), (double)(var15 + var5 * var12 + var7 * var12), (double)var9, (double)var10);
++		var1.addVertexWithUV((double)(var13 + var3 * var12 - var6 * var12), (double)(var14 - var4 * var12), (double)(var15 + var5 * var12 - var7 * var12), (double)var9, (double)var11);
++	}
++}

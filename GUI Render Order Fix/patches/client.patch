@@ -1,0 +1,18 @@
+--- net/minecraft/src/GuiContainer.java
++++ net/minecraft/src/GuiContainer.java
+@@ -51,6 +51,7 @@
+ 			}
+ 		}
+ 
++		this.drawGuiContainerForegroundLayer();
+ 		InventoryPlayer var12 = this.mc.thePlayer.inventory;
+ 		if(var12.getItemStack() != null) {
+ 			GL11.glTranslatef(0.0F, 0.0F, 32.0F);
+@@ -62,7 +63,6 @@
+ 		RenderHelper.disableStandardItemLighting();
+ 		GL11.glDisable(GL11.GL_LIGHTING);
+ 		GL11.glDisable(GL11.GL_DEPTH_TEST);
+-		this.drawGuiContainerForegroundLayer();
+ 		if(var12.getItemStack() == null && var6 != null && var6.getHasStack()) {
+ 			String var13 = ("" + StringTranslate.getInstance().translateNamedKey(var6.getStack().getItemName())).trim();
+ 			if(var13.length() > 0) {

@@ -1,0 +1,14 @@
+--- net/minecraft/src/ItemRenderer.java
++++ net/minecraft/src/ItemRenderer.java
+@@ -33,9 +33,9 @@
+ 			Tessellator var3 = Tessellator.instance;
+ 			int var4 = var1.getItemIcon(var2);
+ 			float var5 = ((float)(var4 % 16 * 16) + 0.0F) / 256.0F;
+-			float var6 = ((float)(var4 % 16 * 16) + 15.99F) / 256.0F;
++			float var6 = ((float)(var4 % 16 * 16) + 16.0F) / 256.0F;
+ 			float var7 = ((float)(var4 / 16 * 16) + 0.0F) / 256.0F;
+-			float var8 = ((float)(var4 / 16 * 16) + 15.99F) / 256.0F;
++			float var8 = ((float)(var4 / 16 * 16) + 16.0F) / 256.0F;
+ 			float var9 = 1.0F;
+ 			float var10 = 0.0F;
+ 			float var11 = 0.3F;
